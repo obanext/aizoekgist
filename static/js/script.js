@@ -4,6 +4,9 @@ let previousResults = [];
 let linkedPPNs = new Set();
 let logs = [];
 
+const logQueue = [];
+let isProcessing = false;
+
 async function fetchGist() {
     try {
         const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
@@ -20,10 +23,10 @@ async function fetchGist() {
     }
 }
 
-async function updateGist(content) {
+async function updateGist(newLog) {
     try {
         const existingLogs = await fetchGist();
-        const updatedLogs = existingLogs.concat(content);
+        existingLogs.push(newLog);
 
         await fetch(`https://api.github.com/gists/${GIST_ID}`, {
             method: 'PATCH',
@@ -35,7 +38,7 @@ async function updateGist(content) {
             body: JSON.stringify({
                 files: {
                     'logs.json': {
-                        content: JSON.stringify(updatedLogs, null, 2)
+                        content: JSON.stringify(existingLogs, null, 2)
                     }
                 }
             })
@@ -48,14 +51,36 @@ async function updateGist(content) {
     }
 }
 
+async function processQueue() {
+    if (isProcessing) {
+        return;
+    }
+
+    isProcessing = true;
+
+    while (logQueue.length > 0) {
+        const logEntry = logQueue.shift();
+
+        try {
+            await updateGist(logEntry);
+        } catch (error) {
+            console.error('Error updating Gist:', error);
+            // Mogelijk opnieuw proberen of de log terug in de queue plaatsen
+        }
+    }
+
+    isProcessing = false;
+}
+
 async function logMessages(userMessage, assistantMessage) {
-    logs.push({
+    const newLog = {
         timestamp: new Date().toISOString(),
         user: userMessage,
         assistant: assistantMessage
-    });
+    };
 
-    await updateGist(logs);
+    logQueue.push(newLog);
+    processQueue();
 }
 
 function checkInput() {
