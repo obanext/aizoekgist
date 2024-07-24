@@ -2,6 +2,61 @@ let thread_id = null;
 let timeoutHandle = null;
 let previousResults = [];
 let linkedPPNs = new Set();
+let logs = [];
+
+async function fetchGist() {
+    try {
+        const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+        const data = await response.json();
+        return JSON.parse(data.files['logs.json'].content || '[]');
+    } catch (error) {
+        console.error('Error fetching Gist:', error);
+        return [];
+    }
+}
+
+async function updateGist(content) {
+    try {
+        const existingLogs = await fetchGist();
+        const updatedLogs = existingLogs.concat(content);
+
+        await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                files: {
+                    'logs.json': {
+                        content: JSON.stringify(updatedLogs, null, 2)
+                    }
+                }
+            })
+        })
+        .then(response => response.json())
+        .then(data => console.log('Gist bijgewerkt:', data))
+        .catch(error => console.error('Error:', error));
+    } catch (error) {
+        console.error('Error updating Gist:', error);
+    }
+}
+
+async function logMessages(userMessage, assistantMessage) {
+    logs.push({
+        timestamp: new Date().toISOString(),
+        user: userMessage,
+        assistant: assistantMessage
+    });
+
+    await updateGist(logs);
+}
 
 function checkInput() {
     const userInput = document.getElementById('user-input').value.trim();
@@ -53,7 +108,6 @@ async function sendMessage() {
     sendButton.style.backgroundColor = "#ccc";
     sendButton.style.cursor = "not-allowed";
 
-    // Maak de resultatencontainer zichtbaar en verberg de detailcontainer en breadcrumb
     document.getElementById('search-results').style.display = 'grid';
     document.getElementById('detail-container').style.display = 'none';
     document.getElementById('breadcrumbs').innerHTML = '';
@@ -101,7 +155,6 @@ async function sendMessage() {
             await sendStatusKlaar();
         }
 
-        // Log de berichten nadat ze volledig zijn verwerkt
         await logMessages(userInput, data.response);
 
         resetFilters();
@@ -121,14 +174,14 @@ function resetThread() {
     startThread();
     document.getElementById('messages').innerHTML = '';
     document.getElementById('search-results').innerHTML = '';
-    document.getElementById('breadcrumbs').innerHTML = 'resultaten'; // Reset breadcrumbs
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
     document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
     addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
     
     resetFilters();
-    linkedPPNs.clear(); // Reset the set here
+    linkedPPNs.clear();
 }
 
 async function sendStatusKlaar() {
@@ -171,7 +224,7 @@ function displayAssistantMessage(message) {
     if (typeof message === 'object') {
         messageElement.textContent = JSON.stringify(message);
     } else {
-        messageElement.innerHTML = message; // Zorg ervoor dat HTML wordt geïnterpreteerd
+        messageElement.innerHTML = message;
     }
     messageContainer.appendChild(messageElement);
     scrollToBottom();
@@ -182,7 +235,7 @@ function displaySearchResults(results) {
     searchResultsContainer.innerHTML = '';
     results.forEach(result => {
         const resultElement = document.createElement('div');
-        resultElement.classList.add('search-result'); // Voeg een klasse toe voor grid styling
+        resultElement.classList.add('search-result');
         resultElement.innerHTML = `
             <div onclick="fetchAndShowDetailPage('${result.ppn}')">
                 <img src="https://cover.biblion.nl/coverlist.dll/?doctype=morebutton&bibliotheek=oba&style=0&ppn=${result.ppn}&isbn=&lid=&aut=&ti=&size=150" alt="Cover for PPN ${result.ppn}">
@@ -238,7 +291,6 @@ async function fetchAndShowDetailPage(ppn) {
             const breadcrumbs = document.getElementById('breadcrumbs');
             breadcrumbs.innerHTML = `<a href="#" onclick="goBackToResults()">resultaten</a> > <span class="breadcrumb-title"><a href="${currentUrl}?ppn=${ppn}" target="_blank">${title}</a></span>`;
             
-            // Stuur alleen de link naar de detailpagina als deze nog niet is verstuurd
             if (!linkedPPNs.has(ppn)) {
                 sendDetailPageLinkToUser(title, currentUrl, ppn);
             }
@@ -257,7 +309,7 @@ function goBackToResults() {
     const searchResultsContainer = document.getElementById('search-results');
     
     detailContainer.style.display = 'none';
-    searchResultsContainer.style.display = 'grid'; // Zorg ervoor dat de juiste display stijl wordt ingesteld
+    searchResultsContainer.style.display = 'grid';
     displaySearchResults(previousResults);
     document.getElementById('breadcrumbs').innerHTML = '';
 }
@@ -286,7 +338,6 @@ async function applyFiltersAndSend() {
     displayUserMessage(`Filters toegepast: ${filterString}`);
     showLoader();
 
-    // Maak de resultatencontainer zichtbaar en verberg de detailcontainer en breadcrumb
     document.getElementById('search-results').style.display = 'grid';
     document.getElementById('detail-container').style.display = 'none';
     document.getElementById('breadcrumbs').innerHTML = '';
@@ -322,7 +373,6 @@ async function applyFiltersAndSend() {
             thread_id = data.thread_id;
         }
         
-        // Log de berichten nadat ze volledig zijn verwerkt
         await logMessages(`Filters toegepast: ${filterString}`, data.results);
 
         resetFilters();
@@ -339,14 +389,14 @@ function startNewChat() {
     document.getElementById('messages').innerHTML = '';
     document.getElementById('search-results').innerHTML = '';
     document.getElementById('detail-container').style.display = 'none';
-    document.getElementById('breadcrumbs').innerHTML = 'resultaten'; // Reset breadcrumbs
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
     document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
     addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
     
     resetFilters();
-    linkedPPNs.clear(); // Reset the set here
+    linkedPPNs.clear();
 }
 
 function extractSearchQuery(response) {
@@ -412,19 +462,6 @@ function addPlaceholders() {
     `;
 }
 
-// Voeg deze functie toe om berichten te loggen
-async function logMessages(userMessage, assistantMessage) {
-    try {
-        await fetch('/log_message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_message: userMessage, assistant_message: assistantMessage })
-        });
-    } catch (error) {
-        console.error('Error logging messages:', error);
-    }
-}
-
 document.getElementById('user-input').addEventListener('input', function() {
     checkInput();
     if (this.value !== "") {
@@ -453,5 +490,5 @@ window.onload = async () => {
     }
 
     resetFilters();
-    linkedPPNs.clear();  // Reset the set here when the page loads
+    linkedPPNs.clear();
 };
