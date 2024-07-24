@@ -34,10 +34,10 @@ async function fetchGist() {
     }
 }
 
-async function updateGist(content) {
+async function updateGist(newLogs) {
     try {
         const existingLogs = await fetchGist();
-        const updatedLogs = existingLogs.concat(content);
+        const updatedLogs = existingLogs.concat(newLogs);
 
         await fetch(`https://api.github.com/gists/${GIST_ID}`, {
             method: 'PATCH',
@@ -63,13 +63,14 @@ async function updateGist(content) {
 }
 
 async function logMessages(userMessage, assistantMessage) {
-    logs.push({
+    const newLog = {
         timestamp: new Date().toISOString(),
         user: userMessage,
         assistant: assistantMessage
-    });
+    };
+    logs.push(newLog);
 
-    await updateGist(logs);
+    await updateGist([newLog]);
 }
 
 function checkInput() {
