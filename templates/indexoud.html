@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexi Cat Chat</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div id="app-container">
+        <div id="chat-section">
+            <div id="chat-header">
+                <button id="new-chat-button" onclick="startNewChat()">
+                    <img src="/static/images/new-chat.svg" alt="New Chat" class="button-icon">
+                    nieuwe vraag
+                </button>
+            </div>
+            <div id="messages"></div>
+            <div id="input-container">
+                <input type="text" id="user-input" placeholder="Vertel me waar je naar zoekt!" oninput="checkInput()">
+                <button id="send-button" onclick="sendMessage()" disabled>
+                    <img src="/static/images/loep.svg" alt="Zoek" class="button-icon">
+                </button>
+            </div>
+        </div>
+        <div id="result-section">
+            <h2>resultaten</h2>
+            <div id="search-results">
+                <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+                <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+                <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+                <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+            </div>
+        </div>
+        <div id="filter-section">
+            <h2>filters</h2>
+            <div id="filters">
+                <div id="filter-options">
+                    <label>
+                        <input type="checkbox" value="prentenboeken baby"> prentenboeken baby
+                    </label>
+                    <label>
+                        <input type="checkbox" value="prentenboeken tot 4 jaar"> prentenboeken tot 4 jaar
+                    </label>
+                    <label>
+                        <input type="checkbox" value="prentenboeken vanaf 4 jaar"> prentenboeken vanaf 4 jaar
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" value="fictie tot 9 jaar"> A
+                    </label>
+                    <label>
+                        <input type="checkbox" value="fictie 9 tot 12 jaar"> B
+                    </label>
+                    <label>
+                        <input type="checkbox" value="fictie vanaf 12 jaar"> C
+                    </label>
+                    <label>
+                        <input type="checkbox" value="fictie vanaf 15 jaar"> D
+                    </label>
+                    <label>
+                        <input type="checkbox" value="fictie volwassenen"> fictie volwassenen
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" value="info tot 9 jaar"> info tot 9 jaar
+                    </label>
+                    <label>
+                        <input type="checkbox" value="info vanaf 9 jaar"> info vanaf 9 jaar
+                    </label>
+                    <label>
+                        <input type="checkbox" value="info volwassenen"> info volwassenen
+                    </label>
+                </div>
+                <button id="apply-filters-button" onclick="applyFiltersAndSend()">pas filters toe</button>
+            </div>
+            <img src="/static/images/nexthybride.png" alt="Nexi Logo" id="nexi-logo">
+        </div>
+    </div>
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Python
+*.pyc
+__pycache__/
+
+# Environment variables
+.env
+
+# Other files to ignore
+*.log
+*.sqlite3
+.DS_Store
+.vscode/
+.idea/
