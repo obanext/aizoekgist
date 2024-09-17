@@ -7,17 +7,6 @@ let previousResults = [];
 let linkedPPNs = new Set();
 let logs = [];
 
-async function loadEnv() {
-    try {
-        const response = await fetch('/path/to/your/env/endpoint');
-        const envData = await response.json();
-        GIST_ID = envData.GIST_ID;
-        GITHUB_TOKEN = envData.GIST_TOKEN;
-    } catch (error) {
-        console.error('Error loading env variables:', error);
-    }
-}
-
 async function fetchGist() {
     try {
         const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
