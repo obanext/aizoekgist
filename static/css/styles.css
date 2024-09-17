@@ -1,11 +1,11 @@
 @font-face {
     font-family: 'Avenir Black';
-    src: url('/static/fonts/Avenir Black.ttf') format('truetype');
+    src: url('/static/fonts/AvenirBlack.ttf') format('truetype');
 }
 
 @font-face {
     font-family: 'Avenir Light';
-    src: url('/static/fonts/Avenir Light.ttf') format('truetype');
+    src: url('/static/fonts/AvenirLight.ttf') format('truetype');
 }
 
 body {
