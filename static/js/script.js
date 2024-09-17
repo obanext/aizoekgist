@@ -482,7 +482,6 @@ document.querySelectorAll('#filters input[type="checkbox"]').forEach(checkbox =>
 });
 
 window.onload = async () => {
-    await loadEnv();
     await startThread();
     addOpeningMessage();
     addPlaceholders();
@@ -497,3 +496,4 @@ window.onload = async () => {
     resetFilters();
     linkedPPNs.clear();
 };
+
