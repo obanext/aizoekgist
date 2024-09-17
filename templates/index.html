@@ -9,12 +9,15 @@
 <body>
     <div id="app-container">
         <div id="chat-section">
-            <div id="chat-header">
-                <button id="new-chat-button" onclick="startNewChat()">
-                    <img src="/static/images/new-chat.svg" alt="New Chat" class="button-icon">
-                    nieuwe vraag
-                </button>
-            </div>
+          <div id="chat-header">
+    <button id="new-chat-button" onclick="startNewChat()">
+        <img src="/static/images/new-chat.svg" alt="New Chat" class="button-icon">
+        nieuwe vraag
+    </button>
+    <button id="help-button" onclick="sendHelpMessage()">
+        Help
+    </button>
+</div>
             <div id="messages"></div>
             <div id="input-container">
                 <input type="text" id="user-input" placeholder="Vertel me waar je naar zoekt!" oninput="checkInput()">
