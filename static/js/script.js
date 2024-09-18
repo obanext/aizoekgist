@@ -403,6 +403,17 @@ function startNewChat() {
     linkedPPNs.clear();
 }
 
+async function startHelpThread() {
+    await startThread(); 
+    document.getElementById('messages').innerHTML = ''; 
+    document.getElementById('search-results').innerHTML = ''; 
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    resetFilters(); 
+    linkedPPNs.clear(); 
+    displayUserMessage("help"); 
+    sendMessage(); 
+}
+
 function extractSearchQuery(response) {
     const searchMarker = "SEARCH_QUERY:";
     if (response.includes(searchMarker)) {
