@@ -61,7 +61,7 @@ async function sendMessage() {
         displayAssistantMessage('😿 er is iets misgegaan, we beginnen opnieuw!');
         hideLoader();
         resetThread();
-    }, 15000);
+    }, 25000);
 
     try {
         const response = await fetch('/send_message', {
