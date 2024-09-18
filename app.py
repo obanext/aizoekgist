@@ -1,279 +1,481 @@
-from flask import Flask, request, jsonify, render_template, url_for
-import openai
-import json
-import requests
-import aiohttp
-import asyncio
-import os
+let thread_id = null;
+let timeoutHandle = null;
+let previousResults = [];
+let linkedPPNs = new Set();
 
-app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY')
-openai_api_key = os.environ.get('OPENAI_API_KEY')
-typesense_api_key = os.environ.get('TYPESENSE_API_KEY')
-typesense_api_url = os.environ.get('TYPESENSE_API_URL')
-gist_token = os.environ.get('GIST_TOKEN')
-gist_id = os.environ.get('GIST_ID')
+function checkInput() {
+    const userInput = document.getElementById('user-input').value.trim();
+    const sendButton = document.getElementById('send-button');
+    const applyFiltersButton = document.getElementById('apply-filters-button');
+    const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
+    let anyChecked = Array.from(checkboxes).some(checkbox => checkbox.checked);
 
-openai.api_key = openai_api_key
-
-assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
-assistant_id_2 = 'asst_mQ8PhYHrTbEvLjfH8bVXPisQ'
-assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
-
-class CustomEventHandler(openai.AssistantEventHandler):
-    def __init__(self):
-        super().__init__()
-        self.response_text = ""
-
-    def on_text_created(self, text) -> None:
-        self.response_text = ""
-
-    def on_text_delta(self, delta, snapshot):
-        self.response_text += delta.value
-
-    def on_tool_call_created(self, tool_call):
-        pass
-
-    def on_tool_call_delta(self, delta, snapshot):
-        pass
-
-def call_assistant(assistant_id, user_input, thread_id=None):
-    try:
-        if thread_id is None:
-            thread = openai.beta.threads.create()
-            thread_id = thread.id
-        else:
-            openai.beta.threads.messages.create(
-                thread_id=thread_id,
-                role="user",
-                content=user_input
-            )
-        
-        event_handler = CustomEventHandler()
-
-        with openai.beta.threads.runs.stream(
-            thread_id=thread_id,
-            assistant_id=assistant_id,
-            event_handler=event_handler,
-        ) as stream:
-            stream.until_done()
-
-        return event_handler.response_text, thread_id
-    except openai.error.OpenAIError as e:
-        return str(e), thread_id
-    except Exception as e:
-        return str(e), thread_id
-
-def extract_search_query(response):
-    search_marker = "SEARCH_QUERY:"
-    if search_marker in response:
-        start_index = response.find(search_marker) + len(search_marker)
-        search_query = response[start_index:].strip()
-        return search_query
-    return None
-
-def extract_comparison_query(response):
-    comparison_marker = "VERGELIJKINGS_QUERY:"
-    if comparison_marker in response:
-        start_index = response.find(comparison_marker) + len(comparison_marker)
-        comparison_query = response[start_index:].strip()
-        return comparison_query
-    return None
-
-def parse_assistant_message(content):
-    try:
-        parsed_content = json.loads(content)
-        return {
-            "q": parsed_content.get("q", ""),
-            "query_by": parsed_content.get("query_by", ""),
-            "collection": parsed_content.get("collection", ""),
-            "vector_query": parsed_content.get("vector_query", ""),
-            "filter_by": parsed_content.get("filter_by", "")
-        }
-    except json.JSONDecodeError:
-        return None
-
-def perform_typesense_search(params):
-    headers = {
-        'Content-Type': 'application/json',
-        'X-TYPESENSE-API-KEY': typesense_api_key,
-    }
-    body = {
-        "searches": [{
-            "q": params["q"],
-            "query_by": params["query_by"],
-            "collection": params["collection"],
-            "prefix": "false",
-            "vector_query": params["vector_query"],
-            "include_fields": "titel,ppn",
-            "per_page": 15,
-            "filter_by": params["filter_by"]
-        }]
+    if (userInput === "") {
+        sendButton.disabled = true;
+        sendButton.style.backgroundColor = "#ccc";
+        sendButton.style.cursor = "not-allowed";
+    } else {
+        sendButton.disabled = false;
+        sendButton.style.backgroundColor = "#6d5ab0";
+        sendButton.style.cursor = "pointer";
     }
 
-    response = requests.post(typesense_api_url, headers=headers, json=body)
+    if (!anyChecked) {
+        applyFiltersButton.disabled = true;
+        applyFiltersButton.style.backgroundColor = "#ccc";
+        applyFiltersButton.style.cursor = "not-allowed";
+    } else {
+        applyFiltersButton.disabled = false;
+        applyFiltersButton.style.backgroundColor = "#6d5ab0";
+        applyFiltersButton.style.cursor = "pointer";
+    }
+}
+
+async function startThread() {
+    const response = await fetch('/start_thread', { method: 'POST' });
+    const data = await response.json();
+    thread_id = data.thread_id;
+}
+
+async function sendMessage() {
+    const userInput = document.getElementById('user-input').value.trim();
+
+    if (userInput === "") {
+        return;
+    }
+
+    displayUserMessage(userInput);
+    showLoader();
     
-    if response.status_code == 200:
-        search_results = response.json()
-        results = [
-            {
-                "ppn": hit["document"]["ppn"],
-                "titel": hit["document"]["titel"]
-            } for hit in search_results["results"][0]["hits"]
-        ]
+    const sendButton = document.getElementById('send-button');
+    document.getElementById('user-input').value = '';
+    sendButton.disabled = true;
+    sendButton.style.backgroundColor = "#ccc";
+    sendButton.style.cursor = "not-allowed";
 
-        simplified_results = {"results": results}
-        return simplified_results
-    else:
-        return {"error": response.status_code, "message": response.text}
+    document.getElementById('search-results').style.display = 'grid';
+    document.getElementById('detail-container').style.display = 'none';
+    document.getElementById('breadcrumbs').innerHTML = '';
 
-def log_message_to_gist(user_message, assistant_message):
-    headers = {
-        'Authorization': f'token {gist_token}',
-        'Accept': 'application/vnd.github.v3+json'
+    timeoutHandle = setTimeout(() => {
+        displayAssistantMessage('😿 er is iets misgegaan, we beginnen opnieuw!');
+        hideLoader();
+        resetThread();
+    }, 15000);
+
+    try {
+        const response = await fetch('/send_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: thread_id,
+                user_input: userInput,
+                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
+            })
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Error:', errorData.error);
+            displayAssistantMessage('😿 er is iets misgegaan, we beginnen opnieuw!');
+            hideLoader();
+            clearTimeout(timeoutHandle);
+            resetThread();
+            return;
+        }
+        const data = await response.json();
+        hideLoader();
+        clearTimeout(timeoutHandle);
+
+        if (!data.response.results) {
+            displayAssistantMessage(data.response);
+        }
+
+        if (data.thread_id) {
+            thread_id = data.thread_id;
+        }
+
+        if (data.response.results) {
+            previousResults = data.response.results;
+            displaySearchResults(data.response.results);
+            await sendStatusKlaar();
+        }
+
+        resetFilters();
+    } catch (error) {
+        console.error('Unexpected error:', error);
+        displayAssistantMessage('😿 er is iets misgegaan, we beginnen opnieuw!');
+        hideLoader();
+        clearTimeout(timeoutHandle);
+        resetThread();
     }
-    data = {
-        "description": "Log of user and assistant messages",
-        "files": {
-            "chat_log.txt": {
-                "content": f"User: {user_message}\nAssistant: {assistant_message}\n\n"
+
+    checkInput();
+    scrollToBottom();
+}
+
+function resetThread() {
+    startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
+    addOpeningMessage();
+    addPlaceholders();
+    scrollToBottom();
+    
+    resetFilters();
+    linkedPPNs.clear();
+}
+
+async function sendStatusKlaar() {
+    try {
+        const response = await fetch('/send_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: thread_id,
+                user_input: 'STATUS : KLAAR',
+                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
+            })
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Error:', errorData.error);
+            return;
+        }
+        const data = await response.json();
+        displayAssistantMessage(data.response);
+        scrollToBottom();
+    } catch (error) {
+        console.error('Unexpected error:', error);
+    }
+}
+
+function displayUserMessage(message) {
+    const messageContainer = document.getElementById('messages');
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('user-message');
+    messageElement.textContent = message;
+    messageContainer.appendChild(messageElement);
+    scrollToBottom();
+}
+
+function displayAssistantMessage(message) {
+    const messageContainer = document.getElementById('messages');
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('assistant-message');
+    if (typeof message === 'object') {
+        messageElement.textContent = JSON.stringify(message);
+    } else {
+        messageElement.innerHTML = message;
+    }
+    messageContainer.appendChild(messageElement);
+    scrollToBottom();
+}
+
+function displaySearchResults(results) {
+    const searchResultsContainer = document.getElementById('search-results');
+    searchResultsContainer.innerHTML = '';
+    results.forEach(result => {
+        const resultElement = document.createElement('div');
+        resultElement.classList.add('search-result');
+        resultElement.innerHTML = `
+            <div onclick="fetchAndShowDetailPage('${result.ppn}')">
+                <img src="https://cover.biblion.nl/coverlist.dll/?doctype=morebutton&bibliotheek=oba&style=0&ppn=${result.ppn}&isbn=&lid=&aut=&ti=&size=150" alt="Cover for PPN ${result.ppn}">
+                <p>${result.titel}</p>
+            </div>
+        `;
+        searchResultsContainer.appendChild(resultElement);
+    });
+}
+
+async function fetchAndShowDetailPage(ppn) {
+    try {
+        const resolverResponse = await fetch(`/proxy/resolver?ppn=${ppn}`);
+        const resolverText = await resolverResponse.text();
+        const parser = new DOMParser();
+        const resolverDoc = parser.parseFromString(resolverText, "application/xml");
+        const itemIdElement = resolverDoc.querySelector('itemid');
+        if (!itemIdElement) {
+            throw new Error('Item ID not found in resolver response.');
+        }
+        const itemId = itemIdElement.textContent.split('|')[2];
+
+        const detailResponse = await fetch(`/proxy/details?item_id=${itemId}`);
+        const contentType = detailResponse.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const detailJson = await detailResponse.json();
+
+            const title = detailJson.record.titles[0] || 'Titel niet beschikbaar';
+            const summary = detailJson.record.summaries[0] || 'Samenvatting niet beschikbaar';
+            const coverImage = detailJson.record.coverimages[0] || '';
+
+            const detailContainer = document.getElementById('detail-container');
+            const searchResultsContainer = document.getElementById('search-results');
+            
+            searchResultsContainer.style.display = 'none';
+            detailContainer.style.display = 'block';
+
+            detailContainer.innerHTML = `
+                <div class="detail-container">
+                    <img src="${coverImage}" alt="Cover for PPN ${ppn}" class="detail-cover">
+                    <div class="detail-summary">
+                        <p>${summary}</p>
+                        <div class="detail-buttons">
+                            <button onclick="goBackToResults()">Terug</button>
+                            <button onclick="window.open('https://zoeken.oba.nl/resolve.ashx?index=ppn&identifiers=${ppn}', '_blank')">Meer informatie op OBA.nl</button>
+                            <button onclick="window.open('https://iguana.oba.nl/iguana/www.main.cls?sUrl=search&theme=OBA#app=Reserve&ppn=${ppn}', '_blank')">Reserveer</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const currentUrl = window.location.href.split('?')[0];
+            const breadcrumbs = document.getElementById('breadcrumbs');
+            breadcrumbs.innerHTML = `<a href="#" onclick="goBackToResults()">resultaten</a> > <span class="breadcrumb-title"><a href="${currentUrl}?ppn=${ppn}" target="_blank">${title}</a></span>`;
+            
+            if (!linkedPPNs.has(ppn)) {
+                sendDetailPageLinkToUser(title, currentUrl, ppn);
             }
+        } else {
+            const errorText = await detailResponse.text();
+            throw new Error(`Unexpected response content type: ${errorText}`);
         }
+    } catch (error) {
+        console.error('Error fetching detail page:', error);
+        displayAssistantMessage('😿 Er is iets misgegaan bij het ophalen van de detailpagina.');
     }
-    response = requests.patch(f'https://api.github.com/gists/{gist_id}', headers=headers, json=data)
-    return response.status_code == 200
+}
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/start_thread', methods=['POST'])
-def start_thread():
-    try:
-        thread = openai.beta.threads.create()
-        return jsonify({'thread_id': thread.id})
-    except openai.error.OpenAIError as e:
-        return jsonify({'error': str(e)}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/send_message', methods=['POST'])
-def send_message():
-    try:
-        data = request.json
-
-        thread_id = data['thread_id']
-        user_input = data['user_input']
-        assistant_id = data['assistant_id']
-
-        response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
-        search_query = extract_search_query(response_text)
-        comparison_query = extract_comparison_query(response_text)
-
-        if search_query:
-            response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
-            search_params = parse_assistant_message(response_text_2)
-            if search_params:
-                search_results = perform_typesense_search(search_params)
-                log_message_to_gist(user_input, search_results)
-                return jsonify({'response': search_results, 'thread_id': thread_id})
-            else:
-                log_message_to_gist(user_input, response_text_2)
-                return jsonify({'response': response_text_2, 'thread_id': thread_id})
-        elif comparison_query:
-            response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
-            search_params = parse_assistant_message(response_text_3)
-            if search_params:
-                search_results = perform_typesense_search(search_params)
-                log_message_to_gist(user_input, search_results)
-                return jsonify({'response': search_results, 'thread_id': thread_id})
-            else:
-                log_message_to_gist(user_input, response_text_3)
-                return jsonify({'response': response_text_3, 'thread_id': thread_id})
-        else:
-            log_message_to_gist(user_input, response_text)
-            return jsonify({'response': response_text, 'thread_id': thread_id})
-    except openai.error.OpenAIError as e:
-        return jsonify({'error': str(e)}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/apply_filters', methods=['POST'])
-def apply_filters():
-    try:
-        data = request.json
-
-        thread_id = data['thread_id']
-        filter_values = data['filter_values']
-        assistant_id = data['assistant_id']
-
-        response_text, thread_id = call_assistant(assistant_id, filter_values, thread_id)
-        search_query = extract_search_query(response_text)
-        comparison_query = extract_comparison_query(response_text)
-
-        if search_query:
-            response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
-            search_params = parse_assistant_message(response_text_2)
-            if search_params:
-                search_results = perform_typesense_search(search_params)
-                log_message_to_gist(filter_values, search_results)
-                return jsonify({'results': search_results['results'], 'thread_id': thread_id})
-            else:
-                log_message_to_gist(filter_values, response_text_2)
-                return jsonify({'response': response_text_2, 'thread_id': thread_id})
-        elif comparison_query:
-            response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
-            search_params = parse_assistant_message(response_text_3)
-            if search_params:
-                search_results = perform_typesense_search(search_params)
-                log_message_to_gist(filter_values, search_results)
-                return jsonify({'results': search_results['results'], 'thread_id': thread_id})
-            else:
-                log_message_to_gist(filter_values, response_text_3)
-                return jsonify({'response': response_text_3, 'thread_id': thread_id})
-        else:
-            log_message_to_gist(filter_values, response_text)
-            return jsonify({'response': response_text, 'thread_id': thread_id})
-    except openai.error.OpenAIError as e:
-        return jsonify({'error': str(e)}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/reset', methods=['POST'])
-def reset():
-    return jsonify({'status': 'reset'})
-
-@app.route('/proxy/resolver', methods=['GET'])
-def proxy_resolver():
-    ppn = request.args.get('ppn')
-    url = f'https://zoeken.oba.nl/api/v1/resolver/ppn/?id={ppn}&authorization=ffbc1ededa6f23371bc40df1864843be'
-    response = requests.get(url)
-    return response.content, response.status_code, response.headers.items()
-
-@app.route('/proxy/details', methods=['GET'])
-def proxy_details():
-    item_id = request.args.get('item_id')
-    url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization=ffbc1ededa6f23371bc40df1864843be&output=json'
-    response = requests.get(url)
+function goBackToResults() {
+    const detailContainer = document.getElementById('detail-container');
+    const searchResultsContainer = document.getElementById('search-results');
     
-    if response.headers['Content-Type'] == 'application/json':
-        return jsonify(response.json()), response.status_code, response.headers.items()
-    else:
-        return response.text, response.status_code, response.headers.items()
+    detailContainer.style.display = 'none';
+    searchResultsContainer.style.display = 'grid';
+    displaySearchResults(previousResults);
+    document.getElementById('breadcrumbs').innerHTML = '';
+}
 
-@app.route('/log_message', methods=['POST'])
-def log_message():
-    try:
-        data = request.json
-        user_message = data['user_message']
-        assistant_message = data['assistant_message']
-        success = log_message_to_gist(user_message, assistant_message)
-        if success:
-            return jsonify({'status': 'success'})
-        else:
-            return jsonify({'status': 'failure'}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+function sendDetailPageLinkToUser(title, baseUrl, ppn) {
+    if (linkedPPNs.has(ppn)) return;
+    const message = `Titel: <a href="#" onclick="fetchAndShowDetailPage('${ppn}'); return false;">${title}</a>`;
+    displayAssistantMessage(message);
+    linkedPPNs.add(ppn);
+}
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+async function applyFiltersAndSend() {
+    const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
+    let selectedFilters = [];
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            selectedFilters.push(checkbox.value);
+        }
+    });
+    const filterString = selectedFilters.join('||');
+
+    if (filterString === "") {
+        return;
+    }
+
+    displayUserMessage(`Filters toegepast: ${filterString}`);
+    showLoader();
+
+    document.getElementById('search-results').style.display = 'grid';
+    document.getElementById('detail-container').style.display = 'none';
+    document.getElementById('breadcrumbs').innerHTML = '';
+
+    try {
+        const response = await fetch('/apply_filters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: thread_id,
+                filter_values: filterString,
+                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Error:', errorData.error);
+            hideLoader();
+            return;
+        }
+
+        const data = await response.json();
+        hideLoader();
+
+        if (data.results) {
+            previousResults = data.results;
+            displaySearchResults(data.results);
+            await sendStatusKlaar();
+        }
+
+        if (data.thread_id) {
+            thread_id = data.thread_id;
+        }
+        
+        resetFilters();
+    } catch (error) {
+        console.error('Unexpected error:', error);
+        hideLoader();
+    }
+
+    checkInput();
+}
+
+function startNewChat() {
+    startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('detail-container').style.display = 'none';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
+    addOpeningMessage();
+    addPlaceholders();
+    scrollToBottom();
+    
+    resetFilters();
+    linkedPPNs.clear();
+}
+
+async function startHelpThread() {
+    await startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    resetFilters();
+    linkedPPNs.clear();
+    addPlaceholders();
+    addOpeningMessage();
+    const userMessage = "help";
+    displayUserMessage(userMessage);
+    await sendHelpMessage(userMessage);
+}
+
+async function sendHelpMessage(message) {
+    showLoader();
+
+    try {
+        const response = await fetch('/send_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: thread_id,
+                user_input: message,
+                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Het verzenden van het help-bericht is mislukt.');
+        }
+
+        const data = await response.json();
+        hideLoader();
+
+        if (data.response) {
+            displayAssistantMessage(data.response);
+        }
+
+    } catch (error) {
+        console.error('Error tijdens het verzenden van het help-bericht:', error);
+        hideLoader();
+        displayAssistantMessage('😿 Er is iets misgegaan. Probeer opnieuw.');
+    }
+}
+
+function extractSearchQuery(response) {
+    const searchMarker = "SEARCH_QUERY:";
+    if (response.includes(searchMarker)) {
+        return response.split(searchMarker)[1].trim();
+    }
+    return null;
+}
+
+function resetFilters() {
+    const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    checkInput();
+}
+
+function showLoader() {
+    const messageContainer = document.getElementById('messages');
+    const loaderElement = document.createElement('div');
+    loaderElement.classList.add('assistant-message', 'loader');
+    loaderElement.id = 'loader';
+    loaderElement.innerHTML = '<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>';
+    messageContainer.appendChild(loaderElement);
+    scrollToBottom();
+}
+
+function hideLoader() {
+    const loaderElement = document.getElementById('loader');
+    if (loaderElement) {
+        loaderElement.remove();
+    }
+
+    const sendButton = document.getElementById('send-button');
+    sendButton.disabled = false;
+    sendButton.style.backgroundColor = "#6d5ab0";
+    sendButton.style.cursor = "pointer";
+}
+
+function scrollToBottom() {
+    const messageContainer = document.getElementById('messages');
+    messageContainer.scrollTop = messageContainer.scrollHeight;
+}
+
+function addOpeningMessage() {
+    const openingMessage = "Hoi! Ik ben Nexi, ik help je zoeken naar boeken en informatie in de OBA. Bijvoorbeeld: 'boeken die lijken op Wereldspionnen' of 'heb je informatie over zeezoogdieren?'"
+    const messageContainer = document.getElementById('messages');
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('assistant-message');
+    messageElement.textContent = openingMessage;
+    messageContainer.appendChild(messageElement);
+    scrollToBottom();
+}
+
+function addPlaceholders() {
+    const searchResultsContainer = document.getElementById('search-results');
+    searchResultsContainer.innerHTML = `
+        <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+        <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+        <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+        <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+    `;
+}
+
+document.getElementById('user-input').addEventListener('input', function() {
+    checkInput();
+    if (this.value !== "") {
+        this.placeholder = "";
+    }
+});
+document.getElementById('user-input').addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+        sendMessage();
+    }
+});
+document.querySelectorAll('#filters input[type="checkbox"]').forEach(checkbox => {
+    checkbox.addEventListener('change', checkInput);
+});
+
+window.onload = async () => {
+    await startThread();
+    addOpeningMessage();
+    addPlaceholders();
+    checkInput();
+    document.getElementById('user-input').placeholder = "Vertel me wat je zoekt!";
+
+    const applyFiltersButton = document.querySelector('button[onclick="applyFiltersAndSend()"]');
+    if (applyFiltersButton) {
+        applyFiltersButton.onclick = applyFiltersAndSend;
+    }
+
+    resetFilters();
+    linkedPPNs.clear();
+};
