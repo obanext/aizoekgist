@@ -59,7 +59,7 @@ async function sendMessage() {
 
     timeoutHandle = setTimeout(() => {
         showErrorMessage();
-    }, 25000);
+    }, 30000);
 
     try {
         const response = await fetch('/send_message', {
