@@ -492,11 +492,50 @@ async function sendHelpMessage() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
+
         if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Error:', errorData.error);
+            console.error('Error sending help message:', await response.text());
             return;
         }
+
+        const data = await response.json();
+        console.log("Help message sent successfully", data);
+    } catch (error) {
+        console.error('Error sending help message:', error);
+    }
+}
+
+async function startHelpChat() {
+    await startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('detail-container').style.display = 'none';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    document.getElementById('user-input').placeholder = "Hoe kan ik je helpen?";
+
+    addOpeningMessage();
+    addPlaceholders();
+    scrollToBottom();
+    
+    resetFilters();
+    linkedPPNs.clear();
+
+    try {
+        const response = await fetch('/send_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: thread_id,
+                user_input: 'help',
+                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Error sending help message:', await response.text());
+            return;
+        }
+
         const data = await response.json();
         console.log("Help message sent successfully", data);
     } catch (error) {
