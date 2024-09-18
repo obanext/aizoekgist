@@ -58,9 +58,7 @@ async function sendMessage() {
     document.getElementById('breadcrumbs').innerHTML = '';
 
     timeoutHandle = setTimeout(() => {
-        displayAssistantMessage('😿 er is iets misgegaan, we beginnen opnieuw!');
-        hideLoader();
-        resetThread();
+        showErrorMessage();
     }, 25000);
 
     try {
@@ -76,10 +74,7 @@ async function sendMessage() {
         if (!response.ok) {
             const errorData = await response.json();
             console.error('Error:', errorData.error);
-            displayAssistantMessage('😿 er is iets misgegaan, we beginnen opnieuw!');
-            hideLoader();
-            clearTimeout(timeoutHandle);
-            resetThread();
+            showErrorMessage();
             return;
         }
         const data = await response.json();
@@ -103,10 +98,7 @@ async function sendMessage() {
         resetFilters();
     } catch (error) {
         console.error('Unexpected error:', error);
-        displayAssistantMessage('😿 er is iets misgegaan, we beginnen opnieuw!');
-        hideLoader();
-        clearTimeout(timeoutHandle);
-        resetThread();
+        showErrorMessage();
     }
 
     checkInput();
@@ -447,6 +439,26 @@ function addPlaceholders() {
         <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
         <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
     `;
+}
+
+function showErrorMessage() {
+    displayAssistantMessage('😿 er is iets misgegaan, we beginnen opnieuw!');
+    hideLoader();
+    clearTimeout(timeoutHandle);
+    resetThread();
+
+    setTimeout(() => {
+        clearErrorMessage();
+    }, 2000);
+}
+
+function clearErrorMessage() {
+    const messageContainer = document.getElementById('messages');
+    const lastMessage = messageContainer.lastChild;
+
+    if (lastMessage && lastMessage.textContent.includes('er is iets misgegaan')) {
+        messageContainer.removeChild(lastMessage);
+    }
 }
 
 document.getElementById('user-input').addEventListener('input', function() {
