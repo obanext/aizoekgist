@@ -404,15 +404,52 @@ function startNewChat() {
 }
 
 async function startHelpThread() {
-    await startThread(); 
-    document.getElementById('messages').innerHTML = ''; 
-    document.getElementById('search-results').innerHTML = ''; 
+    await startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
     document.getElementById('breadcrumbs').innerHTML = 'resultaten';
-    resetFilters(); 
-    linkedPPNs.clear(); 
-    displayUserMessage("help"); 
-    sendMessage(); 
+    resetFilters();
+    linkedPPNs.clear();
+
+    const userMessage = "help";
+    displayUserMessage(userMessage);
+    await sendHelpMessage(userMessage);
 }
+
+async function sendHelpMessage(message) {
+    showLoader();
+
+    try {
+        const response = await fetch('/send_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: thread_id,
+                user_input: message,
+                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Het verzenden van het help-bericht is mislukt.');
+        }
+
+        const data = await response.json();
+        hideLoader();
+
+        if (data.response) {
+            displayAssistantMessage(data.response);
+        }
+
+        await logMessages(message, data.response);
+
+    } catch (error) {
+        console.error('Error tijdens het verzenden van het help-bericht:', error);
+        hideLoader();
+        displayAssistantMessage('😿 Er is iets misgegaan. Probeer opnieuw.');
+    }
+}
+
 
 function extractSearchQuery(response) {
     const searchMarker = "SEARCH_QUERY:";
