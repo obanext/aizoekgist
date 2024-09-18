@@ -410,7 +410,7 @@ async function startHelpThread() {
     document.getElementById('breadcrumbs').innerHTML = 'resultaten';
     resetFilters();
     linkedPPNs.clear();
-
+addOpeningMessage();
     const userMessage = "help";
     displayUserMessage(userMessage);
     await sendHelpMessage(userMessage);
