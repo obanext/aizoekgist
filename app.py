@@ -16,6 +16,19 @@ assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
 assistant_id_2 = 'asst_mQ8PhYHrTbEvLjfH8bVXPisQ'
 assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
 
+def log_chat_to_google_sheets(user_input, assistant_response):
+    try:
+        url = 'https://script.google.com/macros/s/AKfycbxZHlNPRL-DtIMj3Q3_lVekJqE52Iy4iPAM36gvWIof2OdRJsPn9xbcD2y9iLADNI-_/exec'  
+        payload = {
+            'user_input': user_input,
+            'assistant_response': assistant_response
+        }
+        response = requests.post(url, json=payload)
+        if response.status_code != 200:
+            print(f"Failed to log chat: {response.text}")
+    except Exception as e:
+        print(f"Error logging chat to Google Sheets: {e}")
+
 class CustomEventHandler(openai.AssistantEventHandler):
     def __init__(self):
         super().__init__()
