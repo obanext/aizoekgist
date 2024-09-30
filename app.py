@@ -18,7 +18,7 @@ assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
 
 def log_chat_to_google_sheets(user_input, assistant_response):
     try:
-        url = 'https://script.google.com/macros/s/AKfycbwAnbyPxe57k9y6oSF6jGa174p5kS-SyqqadaLxMXGc95eFjDW5Cz6WOoKzpP5dQLhJkg/exec'  
+        url = 'https://script.google.com/macros/s/AKfycbylBhMzHi7tZIlA1LjegF9izHmeUtcm2qdKrQT8fw8QUZKrGbo6UzIim6r32KeKi6k/exec'  
         payload = {
             'user_input': user_input,
             'assistant_response': assistant_response
