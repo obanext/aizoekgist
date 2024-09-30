@@ -23,7 +23,10 @@ def log_chat_to_google_sheets(user_input, assistant_response):
             'user_input': user_input,
             'assistant_response': assistant_response
         }
-        response = requests.post(url, json=payload)
+        headers = {
+            'Content-Type': 'application/json'  # Zorg dat je de juiste headers meestuurt
+        }
+        response = requests.post(url, json=payload, headers=headers)
         if response.status_code != 200:
             print(f"Failed to log chat: {response.text}")
     except Exception as e:
