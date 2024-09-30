@@ -16,24 +16,34 @@ assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
 assistant_id_2 = 'asst_mQ8PhYHrTbEvLjfH8bVXPisQ'
 assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
 
-def log_chat_to_google_sheets(user_input, assistant_response):
+def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
     try:
-        url = 'https://script.google.com/macros/s/AKfycbwoxlNhLl5NfTddk9l-rTg6VZh8ayce2U2FH591YrISCci4sPNgq0gADLiqJEIOkjq_/exec' 
+        print("Logfunctie aangeroepen")
+        print(f"User input: {user_input}")
+        print(f"Assistant response: {assistant_response}")
+        print(f"Thread ID: {thread_id}")
+
+        url = 'https://script.google.com/macros/s/AKfycbxqMBJMmdgSu-VPvJM9LtKKFpId6KLRLgddrhnNk_yC3RkF0vJMTn4hNhRw4v3a6vGY/exec'
         payload = {
+            'thread_id': thread_id,  
             'user_input': user_input,
             'assistant_response': assistant_response
         }
         headers = {
-            'Content-Type': 'application/json'  
+            'Content-Type': 'application/json'
         }
+
+        # Verstuur het POST-verzoek
         response = requests.post(url, json=payload, headers=headers)
-        
-        # Voeg deze print-statements toe voor debugging
+
+        # Controleer de status van het verzoek en de respons
         print(f"Status code: {response.status_code}")
         print(f"Response text: {response.text}")
-        
+
         if response.status_code != 200:
             print(f"Failed to log chat: {response.text}")
+        else:
+            print("Succesvol gelogd in Google Sheets")
     except Exception as e:
         print(f"Error logging chat to Google Sheets: {e}")
 
@@ -168,7 +178,12 @@ def send_message():
         user_input = data['user_input']
         assistant_id = data['assistant_id']
 
+        # Roep de assistant aan
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
+
+        # Log zowel de vraag als het antwoord met het thread_id
+        log_chat_to_google_sheets(user_input, response_text, thread_id)
+
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
 
