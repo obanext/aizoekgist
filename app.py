@@ -293,5 +293,10 @@ def proxy_details():
     else:
         return response.text, response.status_code, response.headers.items()
 
+@app.route('/agent')
+def agent_interface():
+    return render_template('agent.html')
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
