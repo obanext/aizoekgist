@@ -28,19 +28,27 @@ async function checkForHandovers() {
 let currentThreadId = null;  // Houd bij welk thread-id momenteel actief is voor de agent
 
 async function fetchThreadMessages(thread_id) {
-    currentThreadId = thread_id;  // Zet het huidige thread-id
-    const response = await fetch(`/get_thread_messages/${thread_id}`);
-    const data = await response.json();
+    try {
+        const response = await fetch(`/get_thread_messages/${thread_id}`);
+        const data = await response.json();
 
-    if (data.error) {
-        console.error('Error fetching thread messages:', data.error);
-        return;
+        if (data.error) {
+            console.error('Error fetching thread messages:', data.error);
+            return;
+        }
+
+        const messageContainer = document.getElementById('message-container');
+        messageContainer.innerHTML = data.messages.map(message => 
+            `<p><strong>${message.role}:</strong> ${message.content}</p>`).join('');
+
+        // Verstuur 'OBA mens hier!' zodra de agent op de thread klikt
+        await fetch(`/agent_join_thread/${thread_id}`, { method: 'POST' });
+
+    } catch (error) {
+        console.error('Error fetching thread messages:', error);
     }
-
-    const messageContainer = document.getElementById('messages');  // Gebruik de chat-sectie
-    messageContainer.innerHTML = data.messages.map(message => 
-        `<p><strong>${message.role}:</strong> ${message.content}</p>`).join('');
 }
+
 
 async function sendAgentMessage() {
     const agentInput = document.getElementById('agent-input').value.trim();
