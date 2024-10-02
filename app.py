@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, url_for
+from flask import Flask, request, jsonify, render_template, session
 import openai
 import json
 import requests
@@ -166,8 +166,8 @@ def send_message():
         user_input = data['user_input']
         assistant_id = data['assistant_id']
 
-        # Controleer of er een handover heeft plaatsgevonden
-        if thread_id in ongoing_human_interventions:
+        # Check if the conversation has been handed over
+        if thread_id in session and session[thread_id].get('handover', False):
             return jsonify({'response': f"Menselijke agent: {user_input}", 'thread_id': thread_id})
 
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
@@ -209,6 +209,9 @@ def apply_filters():
         filter_values = data['filter_values']
         assistant_id = data['assistant_id']
 
+        if thread_id in session and session[thread_id].get('handover', False):
+            return jsonify({'response': f"Menselijke agent heeft het gesprek overgenomen.", 'thread_id': thread_id})
+
         response_text, thread_id = call_assistant(assistant_id, filter_values, thread_id)
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
@@ -243,8 +246,7 @@ def request_handover():
         thread_id = data.get('thread_id')
 
         if 'paprika' in data.get('message', '').lower():
-            with lock:
-                thread_handover_status[thread_id] = True
+            session[thread_id] = {'handover': True}
             return jsonify({'handover': 'success'})
         else:
             return jsonify({'handover': 'failed'})
@@ -253,20 +255,15 @@ def request_handover():
 
 @app.route('/handover_list', methods=['GET'])
 def handover_list():
-    handover_threads = [thread_id for thread_id, handover in thread_handover_status.items() if handover]
+    handover_threads = [thread_id for thread_id, session_data in session.items() if session_data.get('handover')]
     return jsonify({'handover_threads': handover_threads})
-
-@app.route('/check_handover/<thread_id>', methods=['GET'])
-def check_handover(thread_id):
-    with lock:
-        if thread_id in thread_handover_status and thread_handover_status[thread_id]:
-            return jsonify({'handover': 'success'})
-        else:
-            return jsonify({'handover': 'pending'})
 
 @app.route('/get_thread_messages/<thread_id>', methods=['GET'])
 def get_thread_messages(thread_id):
     try:
+        if thread_id in session and session[thread_id].get('handover', False):
+            return jsonify({'error': 'Menselijke agent heeft overgenomen.'}), 400
+
         thread = openai.beta.threads.get(thread_id=thread_id)
         messages = thread.messages
         return jsonify({'messages': messages})
@@ -297,8 +294,7 @@ def agent_join_thread(thread_id):
             role="agent",
             content="Hoi OBA mens hier! Waarmee kan ik je helpen?"
         )
-        with lock:
-            ongoing_human_interventions[thread_id] = True
+        session[thread_id] = {'handover': True}
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
