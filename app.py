@@ -251,7 +251,7 @@ def request_handover():
     data = request.get_json()
     thread_id = data.get('thread_id')
 
-    if 'mens' in data.get('message', '').lower():
+    if 'paprika' in data.get('message', '').lower():
         with lock:
             thread_handover_status[thread_id] = True
         return jsonify({'handover': 'success'})
