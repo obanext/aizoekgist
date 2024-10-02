@@ -44,6 +44,24 @@ async function sendMessage() {
         return;
     }
 
+    if (userInput.toLowerCase().includes('paprika')) {
+        const response = await fetch('/request_handover', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userInput, thread_id: thread_id })
+        });
+
+        const data = await response.json();
+
+        if (data.handover === 'success') {
+            displayAssistantMessage("Een menselijke agent zal het gesprek overnemen.");
+        } else {
+            displayAssistantMessage("Er is een fout opgetreden bij het verzoek om een menselijke agent.");
+        }
+
+        return;
+    }
+
     displayUserMessage(userInput);
     showLoader();
     
@@ -73,7 +91,6 @@ async function sendMessage() {
         });
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Error:', errorData.error);
             showErrorMessage();
             return;
         }
@@ -97,13 +114,13 @@ async function sendMessage() {
 
         resetFilters();
     } catch (error) {
-        console.error('Unexpected error:', error);
         showErrorMessage();
     }
 
     checkInput();
     scrollToBottom();
 }
+
 
 function resetThread() {
     startThread();
