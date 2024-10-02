@@ -18,6 +18,7 @@ assistant_id_2 = 'asst_mQ8PhYHrTbEvLjfH8bVXPisQ'
 assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
 
 thread_handover_status = {}
+ongoing_human_interventions = {}
 lock = threading.Lock()
 
 def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
@@ -48,7 +49,6 @@ def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
             print("Succesvol gelogd in Google Sheets")
     except Exception as e:
         print(f"Error logging chat to Google Sheets: {e}")
-
 
 class CustomEventHandler(openai.AssistantEventHandler):
     def __init__(self):
@@ -180,6 +180,10 @@ def send_message():
         user_input = data['user_input']
         assistant_id = data['assistant_id']
 
+        # Check if the conversation is with a human agent
+        if thread_id in ongoing_human_interventions:
+            return jsonify({'response': f"Menselijke agent: {user_input}", 'thread_id': thread_id})
+
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
 
         log_chat_to_google_sheets(user_input, response_text, thread_id)
@@ -251,9 +255,10 @@ def request_handover():
     data = request.get_json()
     thread_id = data.get('thread_id')
 
-    if 'paprika' in data.get('message', '').lower():
+    if 'mens' in data.get('message', '').lower():
         with lock:
             thread_handover_status[thread_id] = True
+            ongoing_human_interventions[thread_id] = True
         return jsonify({'handover': 'success'})
 
     return jsonify({'handover': 'failed'})
@@ -279,7 +284,6 @@ def get_thread_messages(thread_id):
         return jsonify({'messages': messages})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/reset', methods=['POST'])
 def reset():
