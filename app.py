@@ -23,11 +23,6 @@ lock = threading.Lock()
 
 def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
     try:
-        print("Logfunctie aangeroepen")
-        print(f"User input: {user_input}")
-        print(f"Assistant response: {assistant_response}")
-        print(f"Thread ID: {thread_id}")
-
         url = 'https://script.google.com/macros/s/AKfycbxqMBJMmdgSu-VPvJM9LtKKFpId6KLRLgddrhnNk_yC3RkF0vJMTn4hNhRw4v3a6vGY/exec'
         payload = {
             'thread_id': thread_id,  
@@ -37,18 +32,9 @@ def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
         headers = {
             'Content-Type': 'application/json'
         }
-
         response = requests.post(url, json=payload, headers=headers)
-
-        print(f"Status code: {response.status_code}")
-        print(f"Response text: {response.text}")
-
-        if response.status_code != 200:
-            print(f"Failed to log chat: {response.text}")
-        else:
-            print("Succesvol gelogd in Google Sheets")
     except Exception as e:
-        print(f"Error logging chat to Google Sheets: {e}")
+        pass
 
 class CustomEventHandler(openai.AssistantEventHandler):
     def __init__(self):
@@ -180,7 +166,6 @@ def send_message():
         user_input = data['user_input']
         assistant_id = data['assistant_id']
 
-        # Check if the conversation is with a human agent
         if thread_id in ongoing_human_interventions:
             return jsonify({'response': f"Menselijke agent: {user_input}", 'thread_id': thread_id})
 
@@ -256,7 +241,6 @@ def request_handover():
         data = request.get_json()
         thread_id = data.get('thread_id')
 
-        # Check if the message contains 'paprika' and set the handover status
         if 'paprika' in data.get('message', '').lower():
             with lock:
                 thread_handover_status[thread_id] = True
@@ -265,7 +249,6 @@ def request_handover():
             return jsonify({'handover': 'failed'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/handover_list', methods=['GET'])
 def handover_list():
@@ -286,6 +269,36 @@ def get_thread_messages(thread_id):
         thread = openai.beta.threads.get(thread_id=thread_id)
         messages = thread.messages
         return jsonify({'messages': messages})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/send_agent_message', methods=['POST'])
+def send_agent_message():
+    try:
+        data = request.json
+        thread_id = data.get('thread_id')
+        agent_message = data.get('message')
+
+        openai.beta.threads.messages.create(
+            thread_id=thread_id,
+            role="agent",
+            content=agent_message
+        )
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/agent_join_thread/<thread_id>', methods=['POST'])
+def agent_join_thread(thread_id):
+    try:
+        openai.beta.threads.messages.create(
+            thread_id=thread_id,
+            role="agent",
+            content="Hoi OBA mens hier! Waarmee kan ik je helpen?"
+        )
+        with lock:
+            ongoing_human_interventions[thread_id] = True
+        return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
