@@ -252,16 +252,20 @@ def apply_filters():
 
 @app.route('/request_handover', methods=['POST'])
 def request_handover():
-    data = request.get_json()
-    thread_id = data.get('thread_id')
+    try:
+        data = request.get_json()
+        thread_id = data.get('thread_id')
 
-    if 'mens' in data.get('message', '').lower():
-        with lock:
-            thread_handover_status[thread_id] = True
-            ongoing_human_interventions[thread_id] = True
-        return jsonify({'handover': 'success'})
+        # Check if the message contains 'paprika' and set the handover status
+        if 'paprika' in data.get('message', '').lower():
+            with lock:
+                thread_handover_status[thread_id] = True
+            return jsonify({'handover': 'success'})
+        else:
+            return jsonify({'handover': 'failed'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-    return jsonify({'handover': 'failed'})
 
 @app.route('/handover_list', methods=['GET'])
 def handover_list():
