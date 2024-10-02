@@ -289,15 +289,18 @@ def send_agent_message():
 @app.route('/agent_join_thread/<thread_id>', methods=['POST'])
 def agent_join_thread(thread_id):
     try:
+        # Stuur een bericht naar de gebruiker zodra de agent de thread opent
         openai.beta.threads.messages.create(
             thread_id=thread_id,
             role="agent",
-            content="Hoi OBA mens hier! Waarmee kan ik je helpen?"
+            content="Hoi! OBA mens hier. Waarmee kan ik je helpen?"
         )
-        session[thread_id] = {'handover': True}
+        with lock:
+            ongoing_human_interventions[thread_id] = True
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/reset', methods=['POST'])
 def reset():
