@@ -277,14 +277,16 @@ def send_agent_message():
         thread_id = data.get('thread_id')
         agent_message = data.get('message')
 
+        # Menselijke agent wordt als "user" gezien in het OpenAI-systeem
         openai.beta.threads.messages.create(
             thread_id=thread_id,
-            role="agent",
+            role="user",  # Correcte rol is "user"
             content=agent_message
         )
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/agent_join_thread/<thread_id>', methods=['POST'])
 def agent_join_thread(thread_id):
