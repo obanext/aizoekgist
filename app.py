@@ -166,7 +166,7 @@ def send_message():
         user_input = data['user_input']
         assistant_id = data['assistant_id']
 
-        # Check if the conversation has been handed over to a human agent
+        # Controleer of er een handover heeft plaatsgevonden
         if thread_id in ongoing_human_interventions:
             return jsonify({'response': f"Menselijke agent: {user_input}", 'thread_id': thread_id})
 
@@ -331,7 +331,6 @@ def proxy_details():
 @app.route('/agent')
 def agent_interface():
     return render_template('agent.html')
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
