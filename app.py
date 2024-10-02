@@ -3,6 +3,7 @@ import openai
 import json
 import requests
 import os
+import threading
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY')
@@ -15,6 +16,9 @@ openai.api_key = openai_api_key
 assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
 assistant_id_2 = 'asst_mQ8PhYHrTbEvLjfH8bVXPisQ'
 assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
+
+thread_handover_status = {}
+lock = threading.Lock()
 
 def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
     try:
@@ -33,10 +37,8 @@ def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
             'Content-Type': 'application/json'
         }
 
-        # Verstuur het POST-verzoek
         response = requests.post(url, json=payload, headers=headers)
 
-        # Controleer de status van het verzoek en de respons
         print(f"Status code: {response.status_code}")
         print(f"Response text: {response.text}")
 
@@ -178,10 +180,8 @@ def send_message():
         user_input = data['user_input']
         assistant_id = data['assistant_id']
 
-        # Roep de assistant aan
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
 
-        # Log zowel de vraag als het antwoord met het thread_id
         log_chat_to_google_sheets(user_input, response_text, thread_id)
 
         search_query = extract_search_query(response_text)
@@ -245,6 +245,31 @@ def apply_filters():
         return jsonify({'error': str(e)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/request_handover', methods=['POST'])
+def request_handover():
+    data = request.get_json()
+    thread_id = data.get('thread_id')
+
+    if 'mens' in data.get('message', '').lower():
+        with lock:
+            thread_handover_status[thread_id] = True
+        return jsonify({'handover': 'success'})
+
+    return jsonify({'handover': 'failed'})
+
+@app.route('/handover_list', methods=['GET'])
+def handover_list():
+    handover_threads = [thread_id for thread_id, handover in thread_handover_status.items() if handover]
+    return jsonify({'handover_threads': handover_threads})
+
+@app.route('/check_handover/<thread_id>', methods=['GET'])
+def check_handover(thread_id):
+    with lock:
+        if thread_id in thread_handover_status and thread_handover_status[thread_id]:
+            return jsonify({'handover': 'success'})
+        else:
+            return jsonify({'handover': 'pending'})
 
 @app.route('/reset', methods=['POST'])
 def reset():
