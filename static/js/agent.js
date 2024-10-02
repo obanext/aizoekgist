@@ -10,11 +10,9 @@ async function checkForHandovers() {
         handoverNotification.innerText = 
             `Er zijn ${handoverThreads.length} gesprekken die menselijke interventie nodig hebben.`;
         
-   
         handoverList.innerHTML = handoverThreads.map(thread => 
             `<p class="clickable-thread" data-thread-id="${thread}">Thread ID: ${thread}</p>`).join('');
 
-      
         document.querySelectorAll('.clickable-thread').forEach(item => {
             item.addEventListener('click', function() {
                 const threadId = this.getAttribute('data-thread-id');
@@ -27,8 +25,10 @@ async function checkForHandovers() {
     }
 }
 
+let currentThreadId = null;  // Houd bij welk thread-id momenteel actief is voor de agent
 
 async function fetchThreadMessages(thread_id) {
+    currentThreadId = thread_id;  // Zet het huidige thread-id
     const response = await fetch(`/get_thread_messages/${thread_id}`);
     const data = await response.json();
 
@@ -37,11 +37,44 @@ async function fetchThreadMessages(thread_id) {
         return;
     }
 
- 
-    const messageContainer = document.getElementById('message-container');
+    const messageContainer = document.getElementById('messages');  // Gebruik de chat-sectie
     messageContainer.innerHTML = data.messages.map(message => 
         `<p><strong>${message.role}:</strong> ${message.content}</p>`).join('');
 }
 
-setInterval(checkForHandovers, 5000);
+async function sendAgentMessage() {
+    const agentInput = document.getElementById('agent-input').value.trim();
+    
+    if (!agentInput || !currentThreadId) {
+        return;  // Stop als er geen bericht is of geen actief thread-id
+    }
 
+    // Verstuur het agent-bericht naar de server
+    const response = await fetch('/send_agent_message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            thread_id: currentThreadId,
+            message: agentInput
+        })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        // Voeg het bericht toe aan de chatinterface
+        const messageContainer = document.getElementById('messages');
+        messageContainer.innerHTML += `<p><strong>Agent:</strong> ${agentInput}</p>`;
+        document.getElementById('agent-input').value = '';  // Clear inputveld
+    } else {
+        console.error('Error sending agent message:', data.error);
+    }
+}
+
+function checkAgentInput() {
+    const agentInput = document.getElementById('agent-input').value.trim();
+    const sendButton = document.getElementById('send-agent-message');
+    sendButton.disabled = !agentInput;  // Schakel de knop in of uit afhankelijk van input
+}
+
+setInterval(checkForHandovers, 5000);  // Blijf de lijst met openstaande handovers controleren
