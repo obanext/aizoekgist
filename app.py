@@ -271,6 +271,16 @@ def check_handover(thread_id):
         else:
             return jsonify({'handover': 'pending'})
 
+@app.route('/get_thread_messages/<thread_id>', methods=['GET'])
+def get_thread_messages(thread_id):
+    try:
+        thread = openai.beta.threads.get(thread_id=thread_id)
+        messages = thread.messages
+        return jsonify({'messages': messages})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/reset', methods=['POST'])
 def reset():
     return jsonify({'status': 'reset'})
