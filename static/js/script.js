@@ -90,7 +90,6 @@ async function sendMessage() {
             })
         });
         if (!response.ok) {
-            const errorData = await response.json();
             showErrorMessage();
             return;
         }
