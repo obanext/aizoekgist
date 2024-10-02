@@ -166,6 +166,7 @@ def send_message():
         user_input = data['user_input']
         assistant_id = data['assistant_id']
 
+        # Controleer of er een handover heeft plaatsgevonden
         if thread_id in ongoing_human_interventions:
             return jsonify({'response': f"Menselijke agent: {user_input}", 'thread_id': thread_id})
 
@@ -265,6 +266,8 @@ def check_handover(thread_id):
 
 @app.route('/get_thread_messages/<thread_id>', methods=['GET'])
 def get_thread_messages(thread_id):
+    if thread_id in ongoing_human_interventions:
+        return jsonify({'error': 'Menselijke agent heeft overgenomen.'}), 400  # Geen berichten ophalen van OpenAI
     try:
         thread = openai.beta.threads.get(thread_id=thread_id)
         messages = thread.messages
