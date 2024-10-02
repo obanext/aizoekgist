@@ -8,10 +8,10 @@ async function checkForHandovers() {
 
     if (handoverThreads.length > 0) {
         handoverNotification.innerText = 
-            Er zijn ${handoverThreads.length} gesprekken die menselijke interventie nodig hebben.;
+            `Er zijn ${handoverThreads.length} gesprekken die menselijke interventie nodig hebben.`;
 
         handoverList.innerHTML = handoverThreads.map(thread => 
-            <p class="clickable-thread" data-thread-id="${thread}">Thread ID: ${thread}</p>
+            `<p class="clickable-thread" data-thread-id="${thread}">Thread ID: ${thread}</p>`
         ).join('');
 
         document.querySelectorAll('.clickable-thread').forEach(item => {
@@ -32,7 +32,7 @@ async function fetchThreadMessages(thread_id) {
     currentThreadId = thread_id;
 
     try {
-        const response = await fetch(/get_thread_messages/${thread_id});
+        const response = await fetch(`/get_thread_messages/${thread_id}`);
         const data = await response.json();
 
         if (data.error) {
@@ -42,11 +42,11 @@ async function fetchThreadMessages(thread_id) {
 
         const messageContainer = document.getElementById('message-container');
         messageContainer.innerHTML = data.messages.map(message => 
-            <p><strong>${message.role}:</strong> ${message.content}</p>
+            `<p><strong>${message.role}:</strong> ${message.content}</p>`
         ).join('');
 
         // Verstuur 'OBA mens hier!' zodra de agent op de thread klikt
-        await fetch(/agent_join_thread/${thread_id}, { method: 'POST' });
+        await fetch(`/agent_join_thread/${thread_id}`, { method: 'POST' });
 
     } catch (error) {
         console.error('Error fetching thread messages:', error);
@@ -75,7 +75,7 @@ async function sendAgentMessage() {
     if (data.status === 'success') {
         // Voeg het bericht toe aan de chatinterface
         const messageContainer = document.getElementById('message-container');
-        messageContainer.innerHTML += <p><strong>Agent:</strong> ${agentInput}</p>;
+        messageContainer.innerHTML += `<p><strong>Agent:</strong> ${agentInput}</p>`;
         document.getElementById('agent-input').value = '';  // Clear inputveld
     } else {
         console.error('Error sending agent message:', data.error);
