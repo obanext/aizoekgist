@@ -285,6 +285,14 @@ button:disabled {
     align-self: flex-start;
 }
 
+#messages .assistant-message {
+    background-color: #f1f1f1;
+    color: black;
+    border-bottom-left-radius: 0;
+    align-self: flex-start;
+}
+
+
 @media (max-width: 768px) {
     #app-container {
         flex-direction: column;
