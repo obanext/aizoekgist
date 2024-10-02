@@ -170,7 +170,6 @@ def send_message():
         if thread_id in ongoing_human_interventions:
             return jsonify({'response': f"Menselijke agent: {user_input}", 'thread_id': thread_id})
 
-        # Normale AI-antwoordflow als er geen handover is
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
 
         log_chat_to_google_sheets(user_input, response_text, thread_id)
@@ -196,13 +195,10 @@ def send_message():
                 return jsonify({'response': response_text_3, 'thread_id': thread_id})
         else:
             return jsonify({'response': response_text, 'thread_id': thread_id})
-    
-    # Error afhandeling
     except openai.error.OpenAIError as e:
         return jsonify({'error': str(e)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/apply_filters', methods=['POST'])
 def apply_filters():
@@ -246,7 +242,6 @@ def request_handover():
         data = request.get_json()
         thread_id = data.get('thread_id')
 
-        # Controleer of "paprika" in het bericht zit
         if 'paprika' in data.get('message', '').lower():
             with lock:
                 thread_handover_status[thread_id] = True
@@ -255,7 +250,6 @@ def request_handover():
             return jsonify({'handover': 'failed'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/handover_list', methods=['GET'])
 def handover_list():
@@ -272,9 +266,6 @@ def check_handover(thread_id):
 
 @app.route('/get_thread_messages/<thread_id>', methods=['GET'])
 def get_thread_messages(thread_id):
-    # Controleer of de handover plaatsvindt
-    if thread_id in ongoing_human_interventions:
-        return jsonify({'error': 'Menselijke agent heeft overgenomen.'}), 400  # Geen berichten ophalen van OpenAI
     try:
         thread = openai.beta.threads.get(thread_id=thread_id)
         messages = thread.messages
