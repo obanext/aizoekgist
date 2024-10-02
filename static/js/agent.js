@@ -36,8 +36,14 @@ async function fetchThreadMessages(thread_id) {
         const data = await response.json();
 
         if (data.error) {
-            console.error('Error fetching thread messages:', data.error);
-            return;
+            if (data.error.includes('Menselijke agent heeft overgenomen')) {
+                // Stop met het ophalen van berichten zodra de handover heeft plaatsgevonden
+                console.log('Menselijke agent heeft het gesprek overgenomen.');
+                return;
+            } else {
+                console.error('Error fetching thread messages:', data.error);
+                return;
+            }
         }
 
         const messageContainer = document.getElementById('message-container');
@@ -45,13 +51,11 @@ async function fetchThreadMessages(thread_id) {
             `<p><strong>${message.role}:</strong> ${message.content}</p>`
         ).join('');
 
-        // Verstuur 'OBA mens hier!' zodra de agent op de thread klikt
-        await fetch(`/agent_join_thread/${thread_id}`, { method: 'POST' });
-
     } catch (error) {
         console.error('Error fetching thread messages:', error);
     }
 }
+
 
 async function sendAgentMessage() {
     const agentInput = document.getElementById('agent-input').value.trim();
