@@ -266,6 +266,7 @@ def check_handover(thread_id):
 
 @app.route('/get_thread_messages/<thread_id>', methods=['GET'])
 def get_thread_messages(thread_id):
+    # Controleer of de handover plaatsvindt
     if thread_id in ongoing_human_interventions:
         return jsonify({'error': 'Menselijke agent heeft overgenomen.'}), 400  # Geen berichten ophalen van OpenAI
     try:
@@ -295,42 +296,4 @@ def send_agent_message():
 def agent_join_thread(thread_id):
     try:
         openai.beta.threads.messages.create(
-            thread_id=thread_id,
-            role="agent",
-            content="Hoi OBA mens hier! Waarmee kan ik je helpen?"
-        )
-        with lock:
-            ongoing_human_interventions[thread_id] = True
-        return jsonify({'status': 'success'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/reset', methods=['POST'])
-def reset():
-    return jsonify({'status': 'reset'})
-
-@app.route('/proxy/resolver', methods=['GET'])
-def proxy_resolver():
-    ppn = request.args.get('ppn')
-    url = f'https://zoeken.oba.nl/api/v1/resolver/ppn/?id={ppn}&authorization=ffbc1ededa6f23371bc40df1864843be'
-    response = requests.get(url)
-    return response.content, response.status_code, response.headers.items()
-
-@app.route('/proxy/details', methods=['GET'])
-def proxy_details():
-    item_id = request.args.get('item_id')
-    url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization=ffbc1ededa6f23371bc40df1864843be&output=json'
-    response = requests.get(url)
-    
-    if response.headers['Content-Type'] == 'application/json':
-        return jsonify(response.json()), response.status_code, response.headers.items()
-    else:
-        return response.text, response.status_code, response.headers.items()
-
-@app.route('/agent')
-def agent_interface():
-    return render_template('agent.html')
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+            thread_id=
