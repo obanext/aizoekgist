@@ -24,17 +24,19 @@
                 <button id="send-button" onclick="sendMessage()" disabled>
                     <img src="/static/images/loep.svg" alt="Zoek" class="button-icon">
                 </button>
+                <!-- Nieuwe knop voor human handover -->
+                <button id="human-handover-button" onclick="requestHumanAgent()">Menselijke agent</button>
             </div>
         </div>
         <div id="result-section">
-            <h2 id="breadcrumbs">resultaten</h2> <!-- Update hier -->
+            <h2 id="breadcrumbs">resultaten</h2>
             <div id="search-results">
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
             </div>
-            <div id="detail-container"></div> <!-- Detailcontainer toegevoegd -->
+            <div id="detail-container"></div>
         </div>
         <div id="filter-section">
             <h2>filters</h2>
