@@ -143,13 +143,16 @@ def human_agent():
 def notify_human_agent():
     data = request.json
     human_agent_id = data['id']
-    human_agent_notifications.append(human_agent_id)
+    if human_agent_id not in human_agent_notifications:
+        human_agent_notifications.append(human_agent_id)
     print(f"Received notification ID: {human_agent_id}")
     return jsonify({'status': 'notification sent'})
 
 @app.route('/get_notifications', methods=['GET'])
 def get_notifications():
-    return jsonify(human_agent_notifications)
+    unique_notifications = list(dict.fromkeys(human_agent_notifications))
+    human_agent_notifications.clear()  # Maak de lijst leeg na ophalen
+    return jsonify(unique_notifications)
 
 @app.route('/start_thread', methods=['POST'])
 def start_thread():
