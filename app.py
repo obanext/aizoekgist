@@ -12,10 +12,7 @@ typesense_api_url = os.environ.get('TYPESENSE_API_URL')
 
 openai.api_key = openai_api_key
 
-assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
-assistant_id_2 = 'asst_mQ8PhYHrTbEvLjfH8bVXPisQ'
-assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
-
+active_users = {}
 human_agent_notifications = []
 
 def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
@@ -151,7 +148,7 @@ def notify_human_agent():
 @app.route('/get_notifications', methods=['GET'])
 def get_notifications():
     unique_notifications = list(dict.fromkeys(human_agent_notifications))
-    human_agent_notifications.clear()  # Maak de lijst leeg na ophalen
+    human_agent_notifications.clear()
     return jsonify(unique_notifications)
 
 @app.route('/start_thread', methods=['POST'])
@@ -261,6 +258,9 @@ def send_message_to_user():
     data = request.json
     user_id = data['id']
     message = data['message']
+    if user_id in active_users:
+        user_socket = active_users[user_id]
+        user_socket.send(message)
     return jsonify({'status': 'message sent'})
 
 if __name__ == "__main__":
