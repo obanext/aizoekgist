@@ -31,29 +31,6 @@ function checkInput() {
     }
 }
 
-async function checkHumanAgent(userInput) {
-    if (userInput.toLowerCase() === "paprika") {
-        displayAssistantMessage("Ik check even of er een mens is!");
-        await notifyHumanAgent();
-        return true;
-    }
-    return false;
-}
-
-async function notifyHumanAgent() {
-    const timestamp = new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', hour12: false });
-    const id = timestamp.replace(/[\/: ]/g, '-');
-    try {
-        await fetch('/notify_human_agent', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id })
-        });
-    } catch (error) {
-        console.error('Error notifying human agent:', error);
-    }
-}
-
 async function startThread() {
     const response = await fetch('/start_thread', { method: 'POST' });
     const data = await response.json();
@@ -62,14 +39,8 @@ async function startThread() {
 
 async function sendMessage() {
     const userInput = document.getElementById('user-input').value.trim();
-    if (userInput === "") {
-        return;
-    }
 
-    const isHumanAgentTriggered = await checkHumanAgent(userInput);
-    if (isHumanAgentTriggered) {
-        document.getElementById('user-input').value = '';
-        checkInput();
+    if (userInput === "") {
         return;
     }
 
@@ -200,11 +171,12 @@ function displaySearchResults(results) {
     results.forEach(result => {
         const resultElement = document.createElement('div');
         resultElement.classList.add('search-result');
-        resultElement.innerHTML = 
-            `<div onclick="fetchAndShowDetailPage('${result.ppn}')">
+        resultElement.innerHTML = `
+            <div onclick="fetchAndShowDetailPage('${result.ppn}')">
                 <img src="https://cover.biblion.nl/coverlist.dll/?doctype=morebutton&bibliotheek=oba&style=0&ppn=${result.ppn}&isbn=&lid=&aut=&ti=&size=150" alt="Cover for PPN ${result.ppn}">
                 <p>${result.titel}</p>
-            </div>`;
+            </div>
+        `;
         searchResultsContainer.appendChild(resultElement);
     });
 }
@@ -236,8 +208,8 @@ async function fetchAndShowDetailPage(ppn) {
             searchResultsContainer.style.display = 'none';
             detailContainer.style.display = 'block';
 
-            detailContainer.innerHTML = 
-                `<div class="detail-container">
+            detailContainer.innerHTML = `
+                <div class="detail-container">
                     <img src="${coverImage}" alt="Cover for PPN ${ppn}" class="detail-cover">
                     <div class="detail-summary">
                         <p>${summary}</p>
@@ -247,7 +219,8 @@ async function fetchAndShowDetailPage(ppn) {
                             <button onclick="window.open('https://iguana.oba.nl/iguana/www.main.cls?sUrl=search&theme=OBA#app=Reserve&ppn=${ppn}', '_blank')">Reserveer</button>
                         </div>
                     </div>
-                </div>`;
+                </div>
+            `;
 
             const currentUrl = window.location.href.split('?')[0];
             const breadcrumbs = document.getElementById('breadcrumbs');
@@ -449,8 +422,7 @@ function scrollToBottom() {
 }
 
 function addOpeningMessage() {
-    const openingMessage = "Hoi! Ik ben Nexi, ik help je zoeken naar boeken en informatie in de OBA. Bijvoorbeeld: 'boeken die lijken op Wereldspionnen' of 'heb je informatie over zeezoogdieren?'.";
-
+    const openingMessage = "Hoi! Ik ben Nexi, ik help je zoeken naar boeken en informatie in de OBA. Bijvoorbeeld: 'boeken die lijken op Wereldspionnen' of 'heb je informatie over zeezoogdieren?'"
     const messageContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
     messageElement.classList.add('assistant-message');
@@ -461,11 +433,12 @@ function addOpeningMessage() {
 
 function addPlaceholders() {
     const searchResultsContainer = document.getElementById('search-results');
-    searchResultsContainer.innerHTML = 
-        `<div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+    searchResultsContainer.innerHTML = `
         <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
         <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
-        <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>`;
+        <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+        <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
+    `;
 }
 
 function showErrorMessage() {
