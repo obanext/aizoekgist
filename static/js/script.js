@@ -54,6 +54,12 @@ async function notifyHumanAgent() {
     }
 }
 
+async function startThread() {
+    const response = await fetch('/start_thread', { method: 'POST' });
+    const data = await response.json();
+    thread_id = data.thread_id;
+}
+
 async function sendMessage() {
     const userInput = document.getElementById('user-input').value.trim();
     if (userInput === "") {
