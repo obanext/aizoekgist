@@ -16,6 +16,8 @@ assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
 assistant_id_2 = 'asst_mQ8PhYHrTbEvLjfH8bVXPisQ'
 assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
 
+human_agent_notifications = []
+
 def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
     try:
         url = 'https://script.google.com/macros/s/AKfycbxqMBJMmdgSu-VPvJM9LtKKFpId6KLRLgddrhnNk_yC3RkF0vJMTn4hNhRw4v3a6vGY/exec'
@@ -141,7 +143,13 @@ def human_agent():
 def notify_human_agent():
     data = request.json
     human_agent_id = data['id']
+    human_agent_notifications.append(human_agent_id)
+    print(f"Received notification ID: {human_agent_id}")
     return jsonify({'status': 'notification sent'})
+
+@app.route('/get_notifications', methods=['GET'])
+def get_notifications():
+    return jsonify(human_agent_notifications)
 
 @app.route('/start_thread', methods=['POST'])
 def start_thread():
@@ -250,7 +258,6 @@ def send_message_to_user():
     data = request.json
     user_id = data['id']
     message = data['message']
-    # Hier logica toevoegen om het bericht naar de gebruiker te sturen
     return jsonify({'status': 'message sent'})
 
 if __name__ == "__main__":
