@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menselijke Agent Chat</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div id="agent-container">
+        <div id="agent-header">
+            <h1>Menselijke Agent</h1>
+        </div>
+        <div id="agent-messages" class="messages"></div>
+        <div id="agent-input-container">
+            <input type="text" id="agent-message" placeholder="Typ een bericht...">
+            <button onclick="sendMessageToUser()">Verstuur</button>
+        </div>
+    </div>
+    <script src="/static/js/human.js"></script>
+</body>
+</html>
