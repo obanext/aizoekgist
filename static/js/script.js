@@ -39,8 +39,14 @@ async function startThread() {
 
 async function sendMessage() {
     const userInput = document.getElementById('user-input').value.trim();
-
     if (userInput === "") {
+        return;
+    }
+
+    const isHumanAgentTriggered = await checkHumanAgent(userInput);
+    if (isHumanAgentTriggered) {
+        document.getElementById('user-input').value = '';
+        checkInput();
         return;
     }
 
@@ -94,6 +100,40 @@ async function sendMessage() {
             displaySearchResults(data.response.results);
             await sendStatusKlaar();
         }
+
+        resetFilters();
+    } catch (error) {
+        console.error('Unexpected error:', error);
+        showErrorMessage();
+    }
+
+    checkInput();
+    scrollToBottom();
+}
+
+async function checkHumanAgent(userInput) {
+    if (userInput.toLowerCase() === "paprika") {
+        displayAssistantMessage("Ik check even of er een mens is!");
+        await notifyHumanAgent();
+        return true;
+    }
+    return false;
+}
+
+async function notifyHumanAgent() {
+    const timestamp = new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', hour12: false });
+    const id = timestamp.replace(/[\/: ]/g, '-');
+    try {
+        await fetch('/notify_human_agent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        });
+    } catch (error) {
+        console.error('Error notifying human agent:', error);
+    }
+}
+
 
         resetFilters();
     } catch (error) {
