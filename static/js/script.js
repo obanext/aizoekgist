@@ -2,7 +2,6 @@ let thread_id = null;
 let timeoutHandle = null;
 let previousResults = [];
 let linkedPPNs = new Set();
-let humanHandoverActive = false; // Nieuw: Human handover actief?
 
 function checkInput() {
     const userInput = document.getElementById('user-input').value.trim();
@@ -82,11 +81,6 @@ async function sendMessage() {
         hideLoader();
         clearTimeout(timeoutHandle);
 
-        if (detectHumanHandoverTrigger(data.response)) {
-            handleHumanHandover();
-            return;
-        }
-
         if (!data.response.results) {
             displayAssistantMessage(data.response);
         }
@@ -111,25 +105,18 @@ async function sendMessage() {
     scrollToBottom();
 }
 
-function detectHumanHandoverTrigger(response) {
-    return response.includes("paprika");
-}
-
-function handleHumanHandover() {
-    humanHandoverActive = true;
-    displayAssistantMessage("Ik zoek er een mens bij...");
-    setTimeout(async () => {
-        const response = await fetch('/handover_to_human', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ thread_id: thread_id })
-        });
-
-        const data = await response.json();
-        if (data.response) {
-            displayAssistantMessage(data.response);
-        }
-    }, 1000);
+function resetThread() {
+    startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
+    addOpeningMessage();
+    addPlaceholders();
+    scrollToBottom();
+    
+    resetFilters();
+    linkedPPNs.clear();
 }
 
 async function sendStatusKlaar() {
@@ -207,35 +194,45 @@ async function fetchAndShowDetailPage(ppn) {
         const itemId = itemIdElement.textContent.split('|')[2];
 
         const detailResponse = await fetch(`/proxy/details?item_id=${itemId}`);
-        const detailJson = await detailResponse.json();
+        const contentType = detailResponse.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const detailJson = await detailResponse.json();
 
-        const title = detailJson.record.titles[0] || 'Titel niet beschikbaar';
-        const summary = detailJson.record.summaries[0] || 'Samenvatting niet beschikbaar';
-        const coverImage = detailJson.record.coverimages[0] || '';
+            const title = detailJson.record.titles[0] || 'Titel niet beschikbaar';
+            const summary = detailJson.record.summaries[0] || 'Samenvatting niet beschikbaar';
+            const coverImage = detailJson.record.coverimages[0] || '';
 
-        const detailContainer = document.getElementById('detail-container');
-        const searchResultsContainer = document.getElementById('search-results');
-        
-        searchResultsContainer.style.display = 'none';
-        detailContainer.style.display = 'block';
+            const detailContainer = document.getElementById('detail-container');
+            const searchResultsContainer = document.getElementById('search-results');
+            
+            searchResultsContainer.style.display = 'none';
+            detailContainer.style.display = 'block';
 
-        detailContainer.innerHTML = `
-            <div class="detail-container">
-                <img src="${coverImage}" alt="Cover for PPN ${ppn}" class="detail-cover">
-                <div class="detail-summary">
-                    <p>${summary}</p>
-                    <div class="detail-buttons">
-                        <button onclick="goBackToResults()">Terug</button>
-                        <button onclick="window.open('https://zoeken.oba.nl/resolve.ashx?index=ppn&identifiers=${ppn}', '_blank')">Meer informatie op OBA.nl</button>
-                        <button onclick="window.open('https://iguana.oba.nl/iguana/www.main.cls?sUrl=search&theme=OBA#app=Reserve&ppn=${ppn}', '_blank')">Reserveer</button>
+            detailContainer.innerHTML = `
+                <div class="detail-container">
+                    <img src="${coverImage}" alt="Cover for PPN ${ppn}" class="detail-cover">
+                    <div class="detail-summary">
+                        <p>${summary}</p>
+                        <div class="detail-buttons">
+                            <button onclick="goBackToResults()">Terug</button>
+                            <button onclick="window.open('https://zoeken.oba.nl/resolve.ashx?index=ppn&identifiers=${ppn}', '_blank')">Meer informatie op OBA.nl</button>
+                            <button onclick="window.open('https://iguana.oba.nl/iguana/www.main.cls?sUrl=search&theme=OBA#app=Reserve&ppn=${ppn}', '_blank')">Reserveer</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
 
-        const currentUrl = window.location.href.split('?')[0];
-        const breadcrumbs = document.getElementById('breadcrumbs');
-        breadcrumbs.innerHTML = `<a href="#" onclick="goBackToResults()">resultaten</a> > <span class="breadcrumb-title"><a href="${currentUrl}?ppn=${ppn}" target="_blank">${title}</a></span>`;
+            const currentUrl = window.location.href.split('?')[0];
+            const breadcrumbs = document.getElementById('breadcrumbs');
+            breadcrumbs.innerHTML = `<a href="#" onclick="goBackToResults()">resultaten</a> > <span class="breadcrumb-title"><a href="${currentUrl}?ppn=${ppn}" target="_blank">${title}</a></span>`;
+            
+            if (!linkedPPNs.has(ppn)) {
+                sendDetailPageLinkToUser(title, currentUrl, ppn);
+            }
+        } else {
+            const errorText = await detailResponse.text();
+            throw new Error(`Unexpected response content type: ${errorText}`);
+        }
     } catch (error) {
         console.error('Error fetching detail page:', error);
         displayAssistantMessage('😿 Er is iets misgegaan bij het ophalen van de detailpagina.');
@@ -252,7 +249,14 @@ function goBackToResults() {
     document.getElementById('breadcrumbs').innerHTML = '';
 }
 
-function applyFiltersAndSend() {
+function sendDetailPageLinkToUser(title, baseUrl, ppn) {
+    if (linkedPPNs.has(ppn)) return;
+    const message = `Titel: <a href="#" onclick="fetchAndShowDetailPage('${ppn}'); return false;">${title}</a>`;
+    displayAssistantMessage(message);
+    linkedPPNs.add(ppn);
+}
+
+async function applyFiltersAndSend() {
     const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
     let selectedFilters = [];
     checkboxes.forEach(checkbox => {
@@ -372,6 +376,14 @@ async function sendHelpMessage(message) {
         hideLoader();
         displayAssistantMessage('😿 Er is iets misgegaan. Probeer opnieuw.');
     }
+}
+
+function extractSearchQuery(response) {
+    const searchMarker = "SEARCH_QUERY:";
+    if (response.includes(searchMarker)) {
+        return response.split(searchMarker)[1].trim();
+    }
+    return null;
 }
 
 function resetFilters() {
