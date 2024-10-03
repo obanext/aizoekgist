@@ -18,11 +18,6 @@ assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
 
 def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
     try:
-        print("Logfunctie aangeroepen")
-        print(f"User input: {user_input}")
-        print(f"Assistant response: {assistant_response}")
-        print(f"Thread ID: {thread_id}")
-
         url = 'https://script.google.com/macros/s/AKfycbxqMBJMmdgSu-VPvJM9LtKKFpId6KLRLgddrhnNk_yC3RkF0vJMTn4hNhRw4v3a6vGY/exec'
         payload = {
             'thread_id': thread_id,  
@@ -32,21 +27,11 @@ def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
         headers = {
             'Content-Type': 'application/json'
         }
-
-        # Verstuur het POST-verzoek
         response = requests.post(url, json=payload, headers=headers)
-
-        # Controleer de status van het verzoek en de respons
-        print(f"Status code: {response.status_code}")
-        print(f"Response text: {response.text}")
-
         if response.status_code != 200:
             print(f"Failed to log chat: {response.text}")
-        else:
-            print("Succesvol gelogd in Google Sheets")
     except Exception as e:
         print(f"Error logging chat to Google Sheets: {e}")
-
 
 class CustomEventHandler(openai.AssistantEventHandler):
     def __init__(self):
@@ -58,12 +43,6 @@ class CustomEventHandler(openai.AssistantEventHandler):
 
     def on_text_delta(self, delta, snapshot):
         self.response_text += delta.value
-
-    def on_tool_call_created(self, tool_call):
-        pass
-
-    def on_tool_call_delta(self, delta, snapshot):
-        pass
 
 def call_assistant(assistant_id, user_input, thread_id=None):
     try:
@@ -78,14 +57,12 @@ def call_assistant(assistant_id, user_input, thread_id=None):
             )
         
         event_handler = CustomEventHandler()
-
         with openai.beta.threads.runs.stream(
             thread_id=thread_id,
             assistant_id=assistant_id,
             event_handler=event_handler,
         ) as stream:
             stream.until_done()
-
         return event_handler.response_text, thread_id
     except openai.error.OpenAIError as e:
         return str(e), thread_id
@@ -138,9 +115,7 @@ def perform_typesense_search(params):
             "filter_by": params["filter_by"]
         }]
     }
-
     response = requests.post(typesense_api_url, headers=headers, json=body)
-    
     if response.status_code == 200:
         search_results = response.json()
         results = [
@@ -149,7 +124,6 @@ def perform_typesense_search(params):
                 "titel": hit["document"]["titel"]
             } for hit in search_results["results"][0]["hits"]
         ]
-
         simplified_results = {"results": results}
         return simplified_results
     else:
@@ -158,6 +132,12 @@ def perform_typesense_search(params):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/notify_human_agent', methods=['POST'])
+def notify_human_agent():
+    data = request.json
+    human_agent_id = data['id']
+    return jsonify({'status': 'notification sent'})
 
 @app.route('/start_thread', methods=['POST'])
 def start_thread():
@@ -173,15 +153,10 @@ def start_thread():
 def send_message():
     try:
         data = request.json
-
         thread_id = data['thread_id']
         user_input = data['user_input']
         assistant_id = data['assistant_id']
-
-        # Roep de assistant aan
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
-
-        # Log zowel de vraag als het antwoord met het thread_id
         log_chat_to_google_sheets(user_input, response_text, thread_id)
 
         search_query = extract_search_query(response_text)
@@ -214,11 +189,9 @@ def send_message():
 def apply_filters():
     try:
         data = request.json
-
         thread_id = data['thread_id']
         filter_values = data['filter_values']
         assistant_id = data['assistant_id']
-
         response_text, thread_id = call_assistant(assistant_id, filter_values, thread_id)
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
@@ -267,6 +240,14 @@ def proxy_details():
         return jsonify(response.json()), response.status_code, response.headers.items()
     else:
         return response.text, response.status_code, response.headers.items()
+
+@app.route('/send_message_to_user', methods=['POST'])
+def send_message_to_user():
+    data = request.json
+    user_id = data['id']
+    message = data['message']
+    # Hier logica toevoegen om het bericht naar de gebruiker te sturen
+    return jsonify({'status': 'message sent'})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
