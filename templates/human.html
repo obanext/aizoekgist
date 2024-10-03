@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Agent Chat</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div id="human-agent-container">
+        <h2>Meldingen</h2>
+        <div id="notifications"></div>
+        <div id="human-chat-section">
+            <div id="messages"></div>
+            <div id="input-container">
+                <input type="text" id="human-input" placeholder="Typ je bericht...">
+                <button id="send-human-button" onclick="sendHumanMessage()">Verstuur</button>
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/human.js"></script>
+</body>
+</html>
