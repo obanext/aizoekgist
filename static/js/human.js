@@ -47,3 +47,19 @@ function displayHumanMessage(message) {
     messageElement.textContent = message;
     messageContainer.appendChild(messageElement);
 }
+
+async function fetchNotifications() {
+    try {
+        const response = await fetch('/get_notifications');
+        if (response.ok) {
+            const notifications = await response.json();
+            notifications.forEach(id => {
+                addNotification(id);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+    }
+}
+
+setInterval(fetchNotifications, 5000);
