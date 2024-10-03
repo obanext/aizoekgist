@@ -133,6 +133,10 @@ def perform_typesense_search(params):
 def index():
     return render_template('index.html')
 
+@app.route('/human_agent')
+def human_agent():
+    return render_template('human.html')
+
 @app.route('/notify_human_agent', methods=['POST'])
 def notify_human_agent():
     data = request.json
