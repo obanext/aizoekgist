@@ -156,10 +156,31 @@ function displayAssistantMessage(message) {
     const messageContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
     messageElement.classList.add('assistant-message');
+    
     if (typeof message === 'object') {
         messageElement.textContent = JSON.stringify(message);
     } else {
-        messageElement.innerHTML = message;
+        const linkRegex = /https?:\/\/[^\s]+/g;
+        let links = message.match(linkRegex);
+        
+        if (links) {
+            // Split the message into parts without URLs and URLs separately
+            const parts = message.split(linkRegex).map(part => document.createTextNode(part));
+            
+            // Append parts and links as elements
+            parts.forEach((part, index) => {
+                messageElement.appendChild(part);
+                if (index < links.length) {
+                    const linkElement = document.createElement('a');
+                    linkElement.href = links[index];
+                    linkElement.target = '_blank';
+                    linkElement.textContent = 'wist je dat we activiteiten hebben die met je zoekvraag te maken hebben? [link]';
+                    messageElement.appendChild(linkElement);
+                }
+            });
+        } else {
+            messageElement.innerHTML = message;
+        }
     }
     messageContainer.appendChild(messageElement);
     scrollToBottom();
