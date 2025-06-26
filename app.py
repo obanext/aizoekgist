@@ -13,7 +13,7 @@ typesense_api_url = os.environ.get('TYPESENSE_API_URL')
 openai.api_key = openai_api_key
 
 assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
-assistant_id_2 = 'asst_mQ8PhYHrTbEvLjfH8bVXPisQ'
+assistant_id_2 = 'asst_iN7gutrYjI18E97U42GODe4B'
 assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
 
 def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
