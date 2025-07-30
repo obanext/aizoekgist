@@ -174,7 +174,7 @@ function displaySearchResults(results) {
         resultElement.innerHTML = `
             <div onclick="fetchAndShowDetailPage('${result.ppn}')">
                 <img src="https://cover.biblion.nl/coverlist.dll/?doctype=morebutton&bibliotheek=oba&style=0&ppn=${result.ppn}&isbn=&lid=&aut=&ti=&size=150" alt="Cover for PPN ${result.ppn}">
-                <p>${result.titel}</p>
+                <p>${result.short_title}</p>
             </div>
         `;
         searchResultsContainer.appendChild(resultElement);
