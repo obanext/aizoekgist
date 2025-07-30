@@ -46,7 +46,7 @@ async function sendMessage() {
 
     displayUserMessage(userInput);
     showLoader();
-
+    
     const sendButton = document.getElementById('send-button');
     document.getElementById('user-input').value = '';
     sendButton.disabled = true;
@@ -71,16 +71,13 @@ async function sendMessage() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
-
-        // Add error handling for non-JSON responses
         if (!response.ok) {
-            const errorText = await response.text();  // Get the response body as text
-            console.error('Error:', errorText);  // Log the error message
-            showErrorMessage();  // Show error message to user
+            const errorData = await response.json();
+            console.error('Error:', errorData.error);
+            showErrorMessage();
             return;
         }
-
-        const data = await response.json();  // Now safely parse the response as JSON
+        const data = await response.json();
         hideLoader();
         clearTimeout(timeoutHandle);
 
@@ -107,7 +104,6 @@ async function sendMessage() {
     checkInput();
     scrollToBottom();
 }
-
 
 function resetThread() {
     startThread();
@@ -160,31 +156,10 @@ function displayAssistantMessage(message) {
     const messageContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
     messageElement.classList.add('assistant-message');
-    
     if (typeof message === 'object') {
         messageElement.textContent = JSON.stringify(message);
     } else {
-        const linkRegex = /https?:\/\/[^\s]+/g;
-        let links = message.match(linkRegex);
-        
-        if (links) {
-            // Split the message into parts without URLs and URLs separately
-            const parts = message.split(linkRegex).map(part => document.createTextNode(part));
-            
-            // Append parts and links as elements
-            parts.forEach((part, index) => {
-                messageElement.appendChild(part);
-                if (index < links.length) {
-                    const linkElement = document.createElement('a');
-                    linkElement.href = links[index];
-                    linkElement.target = '_blank';
-                    linkElement.textContent = 'wist je dat we activiteiten hebben die met je zoekvraag te maken hebben? [link]';
-                    messageElement.appendChild(linkElement);
-                }
-            });
-        } else {
-            messageElement.innerHTML = message;
-        }
+        messageElement.innerHTML = message;
     }
     messageContainer.appendChild(messageElement);
     scrollToBottom();
