@@ -46,7 +46,7 @@ async function sendMessage() {
 
     displayUserMessage(userInput);
     showLoader();
-    
+
     const sendButton = document.getElementById('send-button');
     document.getElementById('user-input').value = '';
     sendButton.disabled = true;
@@ -71,13 +71,16 @@ async function sendMessage() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
+
+        // Add error handling for non-JSON responses
         if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Error:', errorData.error);
-            showErrorMessage();
+            const errorText = await response.text();  // Get the response body as text
+            console.error('Error:', errorText);  // Log the error message
+            showErrorMessage();  // Show error message to user
             return;
         }
-        const data = await response.json();
+
+        const data = await response.json();  // Now safely parse the response as JSON
         hideLoader();
         clearTimeout(timeoutHandle);
 
@@ -104,6 +107,7 @@ async function sendMessage() {
     checkInput();
     scrollToBottom();
 }
+
 
 function resetThread() {
     startThread();
