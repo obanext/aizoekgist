@@ -133,7 +133,7 @@ def perform_typesense_search(params):
             "collection": params["collection"],
             "prefix": "false",
             "vector_query": params["vector_query"],
-            "include_fields": "titel,ppn",
+            "include_fields": "short_title,ppn",
             "per_page": 15,
             "filter_by": params["filter_by"]
         }]
@@ -146,7 +146,7 @@ def perform_typesense_search(params):
         results = [
             {
                 "ppn": hit["document"]["ppn"],
-                "titel": hit["document"]["titel"]
+                "short_title": hit["document"]["short_title"]
             } for hit in search_results["results"][0]["hits"]
         ]
 
