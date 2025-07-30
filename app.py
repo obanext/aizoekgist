@@ -173,7 +173,7 @@ def start_thread():
 def send_message():
     try:
         data = request.json
-
+        print(f"Data ontvangen: {data}")  # Voeg deze regel toe voor debugging
         thread_id = data['thread_id']
         user_input = data['user_input']
         assistant_id = data['assistant_id']
@@ -206,8 +206,10 @@ def send_message():
         else:
             return jsonify({'response': response_text, 'thread_id': thread_id})
     except openai.error.OpenAIError as e:
+        print(f"OpenAI Error: {str(e)}")  # Voeg deze regel toe voor debugging
         return jsonify({'error': str(e)}), 500
     except Exception as e:
+        print(f"Fout: {str(e)}")  # Voeg deze regel toe voor debugging
         return jsonify({'error': str(e)}), 500
 
 @app.route('/apply_filters', methods=['POST'])
