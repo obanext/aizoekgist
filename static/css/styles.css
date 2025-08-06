@@ -236,8 +236,8 @@ button:disabled {
     background: #fff;
     border-radius: 10px;
     overflow: hidden;
-    border: 1px solid #ccc;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: none;
+    box-shadow: none;
 }
 
 .agenda-card-link {
