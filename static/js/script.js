@@ -201,7 +201,8 @@ function displaySearchResults(results) {
 function displayAgendaResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
     searchResultsContainer.innerHTML = '';
-    searchResultsContainer.className = 'agenda-list'; // reset + apply agenda layout
+    searchResultsContainer.classList.remove('book-grid');
+    searchResultsContainer.classList.add('agenda-list');
 
     results.forEach(result => {
         const date = result.date || '';
