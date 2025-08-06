@@ -43,6 +43,7 @@ def fetch_agenda_results(api_url):
             api_url += f"&authorization={oba_api_key}"
         print(f"[DEBUG] agenda API URL: {api_url}") 
         response = requests.get(api_url)
+        print(f"[DEBUG] agenda raw XML:\n{response.text}")  
         response.raise_for_status()
         root = ET.fromstring(response.text)
         results = []
