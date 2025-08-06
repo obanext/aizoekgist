@@ -200,28 +200,37 @@ function displaySearchResults(results) {
 
 function displayAgendaResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
-    searchResultsContainer.classList.remove('book-grid');
-    searchResultsContainer.classList.add('agenda-list');
     searchResultsContainer.innerHTML = '';
+    searchResultsContainer.className = 'agenda-list'; // reset + apply agenda layout
 
     results.forEach(result => {
+        const date = result.date || '';
+        const time = result.time || '';
+        const location = result.location || '';
+        const summary = result.summary || '';
+        const link = result.link || '#';
+        const cover = result.cover || '';
+        const title = result.title || '';
+
         const resultElement = document.createElement('div');
         resultElement.classList.add('agenda-card');
+
         resultElement.innerHTML = `
-            <a href="${result.link}" target="_blank" class="agenda-card-link">
-                <img src="${result.cover}" alt="Agenda cover" class="agenda-card-image">
+            <a href="${link}" target="_blank" class="agenda-card-link">
+                <img src="${cover}" alt="Agenda cover" class="agenda-card-image">
                 <div class="agenda-card-text">
-                    <div class="agenda-date">${result.date}</div>
-                    <div class="agenda-title">${result.title}</div>
-                    <div class="agenda-time">${result.time}</div>
-                    <div class="agenda-location">${result.location}</div>
-                    <div class="agenda-summary">${result.summary}</div>
+                    <div class="agenda-date">${date}</div>
+                    <div class="agenda-title">${title}</div>
+                    <div class="agenda-time">${time}</div>
+                    <div class="agenda-location">${location}</div>
+                    <div class="agenda-summary">${summary}</div>
                 </div>
             </a>
         `;
         searchResultsContainer.appendChild(resultElement);
     });
 }
+
 
 
 
