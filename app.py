@@ -43,11 +43,16 @@ def fetch_agenda_results(api_url):
             api_url += f"&authorization={oba_api_key}"
         print(f"[DEBUG] agenda API URL: {api_url}") 
         response = requests.get(api_url)
-        print(f"[DEBUG] agenda raw XML:\n{response.text}")  
         response.raise_for_status()
         root = ET.fromstring(response.text)
+
         results = []
-        for result in root.findall('result'):
+        result_nodes = root.find('results')
+        if result_nodes is None:
+            print("[DEBUG] No <results> element found in XML")
+            return []
+
+        for result in result_nodes.findall('result'):
             title = result.findtext('.//titles/title') or "Geen titel"
             cover = result.findtext('.//coverimages/coverimage') or ""
             detail_link = result.findtext('.//detail-page') or "#"
@@ -56,6 +61,7 @@ def fetch_agenda_results(api_url):
                 "cover": cover,
                 "link": detail_link
             })
+
         return results
     except Exception as e:
         print(f"Agenda API error: {e}")
