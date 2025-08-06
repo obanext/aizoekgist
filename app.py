@@ -3,50 +3,69 @@ import openai
 import json
 import requests
 import os
+import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY')
+
 openai_api_key = os.environ.get('OPENAI_API_KEY')
 typesense_api_key = os.environ.get('TYPESENSE_API_KEY')
 typesense_api_url = os.environ.get('TYPESENSE_API_URL')
-
+oba_api_key = os.environ.get('OBA_API_KEY')
 openai.api_key = openai_api_key
 
 assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
 assistant_id_2 = 'asst_iN7gutrYjI18E97U42GODe4B'
 assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
+assistant_id_4 = 'asst_9Adxq0d95aUQbMfEGtqJLVx1'  # ← vervang door de ID van je agenda-assistent
 
-def log_chat_to_google_sheets(user_input, assistant_response, thread_id):
+def extract_search_query(response):
+    search_marker = "SEARCH_QUERY:"
+    if search_marker in response:
+        start_index = response.find(search_marker) + len(search_marker)
+        return response[start_index:].strip()
+    return None
+
+def extract_comparison_query(response):
+    comparison_marker = "VERGELIJKINGS_QUERY:"
+    if comparison_marker in response:
+        start_index = response.find(comparison_marker) + len(comparison_marker)
+        return response[start_index:].strip()
+    return None
+
+def extract_agenda_query(response):
+    agenda_marker = "AGENDA_VRAAG:"
+    if agenda_marker in response:
+        start_index = response.find(agenda_marker) + len(agenda_marker)
+        return response[start_index:].strip()
+    return None
+
+def fetch_agenda_results(api_url):
     try:
-        print("Logfunctie aangeroepen")
-        print(f"User input: {user_input}")
-        print(f"Assistant response: {assistant_response}")
-        print(f"Thread ID: {thread_id}")
+        if "authorization=" not in api_url:
+            api_url += f"&authorization={oba_api_key}"
 
-        url = 'https://script.google.com/macros/s/AKfycbxqMBJMmdgSu-VPvJM9LtKKFpId6KLRLgddrhnNk_yC3RkF0vJMTn4hNhRw4v3a6vGY/exec'
-        payload = {
-            'thread_id': thread_id,  
-            'user_input': user_input,
-            'assistant_response': assistant_response
-        }
-        headers = {
-            'Content-Type': 'application/json'
-        }
+        response = requests.get(api_url)
+        response.raise_for_status()
 
-        # Verstuur het POST-verzoek
-        response = requests.post(url, json=payload, headers=headers)
+        root = ET.fromstring(response.text)
+        results = []
 
-        # Controleer de status van het verzoek en de respons
-        print(f"Status code: {response.status_code}")
-        print(f"Response text: {response.text}")
+        for result in root.findall('result'):
+            title = result.findtext('.//titles/title') or "Geen titel"
+            cover = result.findtext('.//coverimages/coverimage') or ""
+            detail_link = result.findtext('.//detail-page') or "#"
 
-        if response.status_code != 200:
-            print(f"Failed to log chat: {response.text}")
-        else:
-            print("Succesvol gelogd in Google Sheets")
+            results.append({
+                "title": title,
+                "cover": cover,
+                "link": detail_link
+            })
+
+        return results
     except Exception as e:
-        print(f"Error logging chat to Google Sheets: {e}")
-
+        print(f"Agenda API error: {e}")
+        return []
 
 class CustomEventHandler(openai.AssistantEventHandler):
     def __init__(self):
@@ -76,7 +95,7 @@ def call_assistant(assistant_id, user_input, thread_id=None):
                 role="user",
                 content=user_input
             )
-        
+
         event_handler = CustomEventHandler()
 
         with openai.beta.threads.runs.stream(
@@ -91,22 +110,6 @@ def call_assistant(assistant_id, user_input, thread_id=None):
         return str(e), thread_id
     except Exception as e:
         return str(e), thread_id
-
-def extract_search_query(response):
-    search_marker = "SEARCH_QUERY:"
-    if search_marker in response:
-        start_index = response.find(search_marker) + len(search_marker)
-        search_query = response[start_index:].strip()
-        return search_query
-    return None
-
-def extract_comparison_query(response):
-    comparison_marker = "VERGELIJKINGS_QUERY:"
-    if comparison_marker in response:
-        start_index = response.find(comparison_marker) + len(comparison_marker)
-        comparison_query = response[start_index:].strip()
-        return comparison_query
-    return None
 
 def parse_assistant_message(content):
     try:
@@ -140,7 +143,7 @@ def perform_typesense_search(params):
     }
 
     response = requests.post(typesense_api_url, headers=headers, json=body)
-    
+
     if response.status_code == 200:
         search_results = response.json()
         results = [
@@ -150,8 +153,7 @@ def perform_typesense_search(params):
             } for hit in search_results["results"][0]["hits"]
         ]
 
-        simplified_results = {"results": results}
-        return simplified_results
+        return {"results": results}
     else:
         return {"error": response.status_code, "message": response.text}
 
@@ -164,8 +166,6 @@ def start_thread():
     try:
         thread = openai.beta.threads.create()
         return jsonify({'thread_id': thread.id})
-    except openai.error.OpenAIError as e:
-        return jsonify({'error': str(e)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -173,19 +173,15 @@ def start_thread():
 def send_message():
     try:
         data = request.json
-        print(f"Data ontvangen: {data}")  # Voeg deze regel toe voor debugging
         thread_id = data['thread_id']
         user_input = data['user_input']
         assistant_id = data['assistant_id']
 
-        # Roep de assistant aan
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
 
-        # Log zowel de vraag als het antwoord met het thread_id
-        log_chat_to_google_sheets(user_input, response_text, thread_id)
-
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
+        agenda_query = extract_agenda_query(response_text)
 
         if search_query:
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
@@ -195,6 +191,7 @@ def send_message():
                 return jsonify({'response': search_results, 'thread_id': thread_id})
             else:
                 return jsonify({'response': response_text_2, 'thread_id': thread_id})
+
         elif comparison_query:
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
@@ -203,68 +200,40 @@ def send_message():
                 return jsonify({'response': search_results, 'thread_id': thread_id})
             else:
                 return jsonify({'response': response_text_3, 'thread_id': thread_id})
+
+        elif agenda_query:
+            response_text_4, thread_id = call_assistant(assistant_id_4, agenda_query, thread_id)
+            agenda_obj = json.loads(response_text_4)
+            results = fetch_agenda_results(agenda_obj["API"])
+            return jsonify({
+                'response': {
+                    'type': 'agenda',
+                    'url': agenda_obj["URL"],
+                    'message': agenda_obj["Message"],
+                    'results': results
+                },
+                'thread_id': thread_id
+            })
+
         else:
             return jsonify({'response': response_text, 'thread_id': thread_id})
-    except openai.error.OpenAIError as e:
-        print(f"OpenAI Error: {str(e)}")  # Voeg deze regel toe voor debugging
-        return jsonify({'error': str(e)}), 500
-    except Exception as e:
-        print(f"Fout: {str(e)}")  # Voeg deze regel toe voor debugging
-        return jsonify({'error': str(e)}), 500
 
-@app.route('/apply_filters', methods=['POST'])
-def apply_filters():
-    try:
-        data = request.json
-
-        thread_id = data['thread_id']
-        filter_values = data['filter_values']
-        assistant_id = data['assistant_id']
-
-        response_text, thread_id = call_assistant(assistant_id, filter_values, thread_id)
-        search_query = extract_search_query(response_text)
-        comparison_query = extract_comparison_query(response_text)
-
-        if search_query:
-            response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
-            search_params = parse_assistant_message(response_text_2)
-            if search_params:
-                search_results = perform_typesense_search(search_params)
-                return jsonify({'results': search_results['results'], 'thread_id': thread_id})
-            else:
-                return jsonify({'response': response_text_2, 'thread_id': thread_id})
-        elif comparison_query:
-            response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
-            search_params = parse_assistant_message(response_text_3)
-            if search_params:
-                search_results = perform_typesense_search(search_params)
-                return jsonify({'results': search_results['results'], 'thread_id': thread_id})
-            else:
-                return jsonify({'response': response_text_3, 'thread_id': thread_id})
-        else:
-            return jsonify({'response': response_text, 'thread_id': thread_id})
-    except openai.error.OpenAIError as e:
-        return jsonify({'error': str(e)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-@app.route('/reset', methods=['POST'])
-def reset():
-    return jsonify({'status': 'reset'})
 
 @app.route('/proxy/resolver', methods=['GET'])
 def proxy_resolver():
     ppn = request.args.get('ppn')
-    url = f'https://zoeken.oba.nl/api/v1/resolver/ppn/?id={ppn}&authorization=ffbc1ededa6f23371bc40df1864843be'
+    url = f'https://zoeken.oba.nl/api/v1/resolver/ppn/?id={ppn}&authorization={oba_api_key}'
     response = requests.get(url)
     return response.content, response.status_code, response.headers.items()
 
 @app.route('/proxy/details', methods=['GET'])
 def proxy_details():
     item_id = request.args.get('item_id')
-    url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization=ffbc1ededa6f23371bc40df1864843be&output=json'
+    url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization={oba_api_key}&output=json'
     response = requests.get(url)
-    
+
     if response.headers['Content-Type'] == 'application/json':
         return jsonify(response.json()), response.status_code, response.headers.items()
     else:
