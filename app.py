@@ -42,7 +42,7 @@ def fetch_agenda_results(api_url):
     try:
         if "authorization=" not in api_url:
             api_url += f"&authorization={oba_api_key}"
-        print(f"[DEBUG] agenda API URL: {api_url}") 
+        print(f"[DEBUG] agenda API URL: {api_url}")
         response = requests.get(api_url)
         response.raise_for_status()
         root = ET.fromstring(response.text)
@@ -53,53 +53,52 @@ def fetch_agenda_results(api_url):
             print("[DEBUG] No <results> element found in XML")
             return []
 
-       from datetime import datetime
+        for result in result_nodes.findall('result'):
+            title = result.findtext('.//titles/title') or "Geen titel"
+            cover = result.findtext('.//coverimages/coverimage') or ""
+            link = result.findtext('.//detail-page') or "#"
+            summary = result.findtext('.//summaries/summary') or ""
 
-for result in result_nodes.findall('result'):
-    title = result.findtext('.//titles/title') or "Geen titel"
-    cover = result.findtext('.//coverimages/coverimage') or ""
-    link = result.findtext('.//detail-page') or "#"
-    summary = result.findtext('.//summaries/summary') or ""
+            datum_start = result.findtext('.//custom/gebeurtenis/datum[@start]')
+            datum_eind = result.findtext('.//custom/gebeurtenis/datum[@eind]')
+            gebouw = result.findtext('.//custom/gebeurtenis/gebouw') or ""
+            locatienaam = result.findtext('.//custom/gebeurtenis/locatienaam') or ""
 
-    # Datum & tijd ophalen uit custom/gebeurtenis
-    datum_start = result.findtext('.//custom/gebeurtenis/datum[@start]')
-    datum_eind = result.findtext('.//custom/gebeurtenis/datum[@eind]')
-    gebouw = result.findtext('.//custom/gebeurtenis/gebouw') or ""
-    locatienaam = result.findtext('.//custom/gebeurtenis/locatienaam') or ""
-    
-    date_str = ""
-    time_str = ""
-    if datum_start:
-        try:
-            dt_start = datetime.fromisoformat(datum_start.replace("Z", "+00:00"))
-            date_str = dt_start.strftime("%A %d %B %Y")  # bijv: woensdag 06 augustus 2025
-            time_str = dt_start.strftime("%H:%M")
-        except Exception as e:
-            print("Startdatum parsefout:", e)
-    if datum_eind:
-        try:
-            dt_end = datetime.fromisoformat(datum_eind.replace("Z", "+00:00"))
-            time_str += " - " + dt_end.strftime("%H:%M")
-        except Exception as e:
-            print("Einddatum parsefout:", e)
+            date_str = ""
+            time_str = ""
 
-    location = f"{gebouw} - {locatienaam}".strip(" -")
+            if datum_start:
+                try:
+                    dt_start = datetime.fromisoformat(datum_start.replace("Z", "+00:00"))
+                    date_str = dt_start.strftime("%A %d %B %Y")  # voorbeeld: woensdag 06 augustus 2025
+                    time_str = dt_start.strftime("%H:%M")
+                except Exception as e:
+                    print("Startdatum parsefout:", e)
 
-    results.append({
-        "title": title,
-        "cover": cover,
-        "link": link,
-        "summary": summary,
-        "date": date_str,
-        "time": time_str,
-        "location": location
-    })
+            if datum_eind:
+                try:
+                    dt_end = datetime.fromisoformat(datum_eind.replace("Z", "+00:00"))
+                    time_str += " - " + dt_end.strftime("%H:%M")
+                except Exception as e:
+                    print("Einddatum parsefout:", e)
 
+            location = f"{gebouw} - {locatienaam}".strip(" -")
+
+            results.append({
+                "title": title,
+                "cover": cover,
+                "link": link,
+                "summary": summary,
+                "date": date_str,
+                "time": time_str,
+                "location": location
+            })
 
         return results
     except Exception as e:
         print(f"Agenda API error: {e}")
         return []
+
 
 class CustomEventHandler(openai.AssistantEventHandler):
     def __init__(self):
