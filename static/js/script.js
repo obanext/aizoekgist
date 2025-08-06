@@ -182,11 +182,15 @@ function displaySearchResults(results) {
         const resultElement = document.createElement('div');
         resultElement.classList.add('search-result');
         resultElement.innerHTML = `
-            <div onclick="fetchAndShowDetailPage('${result.ppn}')">
-                <img src="https://cover.biblion.nl/coverlist.dll/?doctype=morebutton&bibliotheek=oba&style=0&ppn=${result.ppn}&isbn=&lid=&aut=&ti=&size=150" alt="Cover for PPN ${result.ppn}">
-                <p>${result.short_title}</p>
-            </div>
-        `;
+    <div onclick="fetchAndShowDetailPage('${result.ppn}')">
+        <img src="https://cover.biblion.nl/coverlist.dll/?doctype=morebutton&bibliotheek=oba&style=0&ppn=${result.ppn}&isbn=&lid=&aut=&ti=&size=150" 
+             alt="Cover for PPN ${result.ppn}" 
+             class="book-cover">
+        <p>${result.short_title}</p>
+    </div>
+`;
+
+
         searchResultsContainer.appendChild(resultElement);
     });
 }
@@ -198,12 +202,13 @@ function displayAgendaResults(results) {
     results.forEach(result => {
         const resultElement = document.createElement('div');
         resultElement.classList.add('search-result'); // zelfde class als boeken voor styling
-        resultElement.innerHTML = `
-            <div onclick='showAgendaDetail(${JSON.stringify(result)})'>
-                <img src="${result.cover}" alt="Agenda cover">
-                <p>${result.title}</p>
-            </div>
-        `;
+      resultElement.innerHTML = `
+    <div class="agenda-result" onclick='window.open("${result.link}", "_blank")'>
+        <img src="${result.cover}" alt="Agenda cover" class="agenda-cover">
+        <p>${result.title}</p>
+    </div>
+`;
+
         searchResultsContainer.appendChild(resultElement);
     });
 }
