@@ -177,41 +177,48 @@ function displayAssistantMessage(message) {
 
 function displaySearchResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
+    searchResultsContainer.className = 'book-grid'; // belangrijk
     searchResultsContainer.innerHTML = '';
     results.forEach(result => {
         const resultElement = document.createElement('div');
         resultElement.classList.add('search-result');
         resultElement.innerHTML = `
-    <div onclick="fetchAndShowDetailPage('${result.ppn}')">
-        <img src="https://cover.biblion.nl/coverlist.dll/?doctype=morebutton&bibliotheek=oba&style=0&ppn=${result.ppn}&isbn=&lid=&aut=&ti=&size=150" 
-             alt="Cover for PPN ${result.ppn}" 
-             class="book-cover">
-        <p>${result.short_title}</p>
-    </div>
-`;
-
-
+            <div onclick="fetchAndShowDetailPage('${result.ppn}')">
+                <img src="https://cover.biblion.nl/coverlist.dll/?doctype=morebutton&bibliotheek=oba&style=0&ppn=${result.ppn}&isbn=&lid=&aut=&ti=&size=150" 
+                     alt="Cover for PPN ${result.ppn}" 
+                     class="book-cover">
+                <p>${result.short_title}</p>
+            </div>
+        `;
         searchResultsContainer.appendChild(resultElement);
     });
 }
 
+
 function displayAgendaResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
+    searchResultsContainer.className = ''; // verwijder book-grid layout
     searchResultsContainer.innerHTML = '';
 
     results.forEach(result => {
         const resultElement = document.createElement('div');
-        resultElement.classList.add('search-result'); // zelfde class als boeken voor styling
-      resultElement.innerHTML = `
-    <div class="agenda-result" onclick='window.open("${result.link}", "_blank")'>
-        <img src="${result.cover}" alt="Agenda cover" class="agenda-cover">
-        <p>${result.title}</p>
-    </div>
-`;
-
+        resultElement.classList.add('agenda-card');
+        resultElement.innerHTML = `
+            <a href="${result.link}" target="_blank" class="agenda-card-link">
+                <img src="${result.cover}" alt="Agenda cover" class="agenda-card-image">
+                <div class="agenda-card-text">
+                    <div class="agenda-date">${result.date || ''}</div>
+                    <div class="agenda-title">${result.title}</div>
+                    <div class="agenda-time">${result.time || ''}</div>
+                    <div class="agenda-location">${result.location || ''}</div>
+                    <div class="agenda-summary">${result.summary || ''}</div>
+                </div>
+            </a>
+        `;
         searchResultsContainer.appendChild(resultElement);
     });
 }
+
 
 function showAgendaDetail(result) {
     const detailContainer = document.getElementById('detail-container');
