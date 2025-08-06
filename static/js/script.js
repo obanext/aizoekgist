@@ -191,16 +191,19 @@ function displaySearchResults(results) {
 }
 
 function displayAgendaResults(results) {
+    console.log('displayAgendaResults aangeroepen');
+    console.log(results);
+
     const searchResultsContainer = document.getElementById('search-results');
     searchResultsContainer.innerHTML = '';
+
     results.forEach(result => {
         const resultElement = document.createElement('div');
         resultElement.classList.add('search-result');
         resultElement.innerHTML = `
-            <div onclick="window.open('${result.link}', '_blank')">
-                <img src="${result.cover}" alt="Cover">
-                <p>${result.title}</p>
-            </div>
+            <p>${result.title}</p>
+            <p>${result.link}</p>
+            <p>${result.cover}</p>
         `;
         searchResultsContainer.appendChild(resultElement);
     });
