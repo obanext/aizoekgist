@@ -217,17 +217,17 @@ function displayAgendaResults(results) {
         resultElement.classList.add('agenda-card');
 
         resultElement.innerHTML = `
-            <a href="${link}" target="_blank" class="agenda-card-link">
-                <img src="${cover}" alt="Agenda cover" class="agenda-card-image">
-                <div class="agenda-card-text">
-                    <div class="agenda-date">${date}</div>
-                    <div class="agenda-title">${title}</div>
-                    <div class="agenda-time">${time}</div>
-                    <div class="agenda-location">${location}</div>
-                    <div class="agenda-summary">${summary}</div>
-                </div>
-            </a>
-        `;
+    <a href="${link}" target="_blank" class="agenda-card-link">
+        <img src="${cover}" alt="Agenda cover" class="agenda-card-image">
+        <div class="agenda-card-text">
+            <div class="agenda-date">${date}</div>
+            <div class="agenda-title">${title}</div>
+            <div class="agenda-time">${time}</div>
+            <div class="agenda-location">${location}</div>
+            <div class="agenda-summary">${summary}</div>
+        </div>
+    </a>
+`;
         searchResultsContainer.appendChild(resultElement);
     });
 }
