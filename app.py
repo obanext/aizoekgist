@@ -17,51 +17,43 @@ openai.api_key = openai_api_key
 assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
 assistant_id_2 = 'asst_iN7gutrYjI18E97U42GODe4B'
 assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
-assistant_id_4 = 'asst_9Adxq0d95aUQbMfEGtqJLVx1'  # ← vervang door de ID van je agenda-assistent
+assistant_id_4 = 'asst_9Adxq0d95aUQbMfEGtqJLVx1'
 
 def extract_search_query(response):
-    search_marker = "SEARCH_QUERY:"
-    if search_marker in response:
-        start_index = response.find(search_marker) + len(search_marker)
-        return response[start_index:].strip()
+    marker = "SEARCH_QUERY:"
+    if marker in response:
+        return response.split(marker, 1)[1].strip()
     return None
 
 def extract_comparison_query(response):
-    comparison_marker = "VERGELIJKINGS_QUERY:"
-    if comparison_marker in response:
-        start_index = response.find(comparison_marker) + len(comparison_marker)
-        return response[start_index:].strip()
+    marker = "VERGELIJKINGS_QUERY:"
+    if marker in response:
+        return response.split(marker, 1)[1].strip()
     return None
 
 def extract_agenda_query(response):
-    agenda_marker = "AGENDA_VRAAG:"
-    if agenda_marker in response:
-        start_index = response.find(agenda_marker) + len(agenda_marker)
-        return response[start_index:].strip()
+    marker = "AGENDA_VRAAG:"
+    if marker in response:
+        return response.split(marker, 1)[1].strip()
     return None
 
 def fetch_agenda_results(api_url):
     try:
         if "authorization=" not in api_url:
             api_url += f"&authorization={oba_api_key}"
-
         response = requests.get(api_url)
         response.raise_for_status()
-
         root = ET.fromstring(response.text)
         results = []
-
         for result in root.findall('result'):
             title = result.findtext('.//titles/title') or "Geen titel"
             cover = result.findtext('.//coverimages/coverimage') or ""
             detail_link = result.findtext('.//detail-page') or "#"
-
             results.append({
                 "title": title,
                 "cover": cover,
                 "link": detail_link
             })
-
         return results
     except Exception as e:
         print(f"Agenda API error: {e}")
@@ -95,31 +87,26 @@ def call_assistant(assistant_id, user_input, thread_id=None):
                 role="user",
                 content=user_input
             )
-
         event_handler = CustomEventHandler()
-
         with openai.beta.threads.runs.stream(
             thread_id=thread_id,
             assistant_id=assistant_id,
             event_handler=event_handler,
         ) as stream:
             stream.until_done()
-
         return event_handler.response_text, thread_id
-    except openai.error.OpenAIError as e:
-        return str(e), thread_id
     except Exception as e:
         return str(e), thread_id
 
 def parse_assistant_message(content):
     try:
-        parsed_content = json.loads(content)
+        parsed = json.loads(content)
         return {
-            "q": parsed_content.get("q", ""),
-            "query_by": parsed_content.get("query_by", ""),
-            "collection": parsed_content.get("collection", ""),
-            "vector_query": parsed_content.get("vector_query", ""),
-            "filter_by": parsed_content.get("filter_by", "")
+            "q": parsed.get("q", ""),
+            "query_by": parsed.get("query_by", ""),
+            "collection": parsed.get("collection", ""),
+            "vector_query": parsed.get("vector_query", ""),
+            "filter_by": parsed.get("filter_by", "")
         }
     except json.JSONDecodeError:
         return None
@@ -141,19 +128,10 @@ def perform_typesense_search(params):
             "filter_by": params["filter_by"]
         }]
     }
-
     response = requests.post(typesense_api_url, headers=headers, json=body)
-
     if response.status_code == 200:
-        search_results = response.json()
-        results = [
-            {
-                "ppn": hit["document"]["ppn"],
-                "short_title": hit["document"]["short_title"]
-            } for hit in search_results["results"][0]["hits"]
-        ]
-
-        return {"results": results}
+        hits = response.json()["results"][0]["hits"]
+        return {"results": [{"ppn": h["document"]["ppn"], "short_title": h["document"]["short_title"]} for h in hits]}
     else:
         return {"error": response.status_code, "message": response.text}
 
@@ -178,7 +156,6 @@ def send_message():
         assistant_id = data['assistant_id']
 
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
-
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
         agenda_query = extract_agenda_query(response_text)
@@ -187,23 +164,22 @@ def send_message():
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
             search_params = parse_assistant_message(response_text_2)
             if search_params:
-                search_results = perform_typesense_search(search_params)
-                return jsonify({'response': search_results, 'thread_id': thread_id})
-            else:
-                return jsonify({'response': response_text_2, 'thread_id': thread_id})
+                return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
+            return jsonify({'response': response_text_2, 'thread_id': thread_id})
 
         elif comparison_query:
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
             if search_params:
-                search_results = perform_typesense_search(search_params)
-                return jsonify({'response': search_results, 'thread_id': thread_id})
-            else:
-                return jsonify({'response': response_text_3, 'thread_id': thread_id})
+                return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
+            return jsonify({'response': response_text_3, 'thread_id': thread_id})
 
         elif agenda_query:
             response_text_4, thread_id = call_assistant(assistant_id_4, agenda_query, thread_id)
-            agenda_obj = json.loads(response_text_4)
+            try:
+                agenda_obj = json.loads(response_text_4)
+            except json.JSONDecodeError:
+                return jsonify({'response': response_text_4, 'thread_id': thread_id})
             results = fetch_agenda_results(agenda_obj["API"])
             return jsonify({
                 'response': {
@@ -215,9 +191,40 @@ def send_message():
                 'thread_id': thread_id
             })
 
-        else:
-            return jsonify({'response': response_text, 'thread_id': thread_id})
+        return jsonify({'response': response_text, 'thread_id': thread_id})
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/apply_filters', methods=['POST'])
+def apply_filters():
+    try:
+        data = request.json
+        thread_id = data['thread_id']
+        filter_values = data['filter_values']
+        assistant_id = data['assistant_id']
+
+        response_text, thread_id = call_assistant(assistant_id, filter_values, thread_id)
+        search_query = extract_search_query(response_text)
+        comparison_query = extract_comparison_query(response_text)
+
+        if search_query:
+            response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
+            search_params = parse_assistant_message(response_text_2)
+            if search_params:
+                results = perform_typesense_search(search_params)
+                return jsonify({'results': results['results'], 'thread_id': thread_id})
+            return jsonify({'response': response_text_2, 'thread_id': thread_id})
+
+        elif comparison_query:
+            response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
+            search_params = parse_assistant_message(response_text_3)
+            if search_params:
+                results = perform_typesense_search(search_params)
+                return jsonify({'results': results['results'], 'thread_id': thread_id})
+            return jsonify({'response': response_text_3, 'thread_id': thread_id})
+
+        return jsonify({'response': response_text, 'thread_id': thread_id})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -233,11 +240,9 @@ def proxy_details():
     item_id = request.args.get('item_id')
     url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization={oba_api_key}&output=json'
     response = requests.get(url)
-
-    if response.headers['Content-Type'] == 'application/json':
+    if response.headers.get('Content-Type') == 'application/json':
         return jsonify(response.json()), response.status_code, response.headers.items()
-    else:
-        return response.text, response.status_code, response.headers.items()
+    return response.text, response.status_code, response.headers.items()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
