@@ -192,22 +192,36 @@ function displaySearchResults(results) {
 }
 
 function displayAgendaResults(results) {
-    console.log('displayAgendaResults aangeroepen');
-    console.log(results);
-
     const searchResultsContainer = document.getElementById('search-results');
     searchResultsContainer.innerHTML = '';
 
     results.forEach(result => {
         const resultElement = document.createElement('div');
-        resultElement.classList.add('search-result');
+        resultElement.classList.add('search-result'); // zelfde class als boeken voor styling
         resultElement.innerHTML = `
-            <p>${result.title}</p>
-            <p>${result.link}</p>
-            <p>${result.cover}</p>
+            <div onclick='showAgendaDetail(${JSON.stringify(result)})'>
+                <img src="${result.cover}" alt="Agenda cover">
+                <p>${result.title}</p>
+            </div>
         `;
         searchResultsContainer.appendChild(resultElement);
     });
+}
+
+function showAgendaDetail(result) {
+    const detailContainer = document.getElementById('detail-container');
+    detailContainer.innerHTML = `
+        <div class="detail-container">
+            <img src="${result.cover}" alt="Agenda cover" class="detail-cover">
+            <div class="detail-summary">
+                <h3>${result.title}</h3>
+                <div class="detail-buttons">
+                    <button onclick="window.open('${result.link}', '_blank')">Bekijk op OBA.nl</button>
+                </div>
+            </div>
+        </div>
+    `;
+    detailContainer.style.display = 'flex';
 }
 
 async function fetchAndShowDetailPage(ppn) {
