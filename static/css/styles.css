@@ -397,7 +397,7 @@ button:disabled {
 
 .agenda-cover {
     width: 150px;
-    height: auto;
+    height: 200px;
     object-fit: cover;
     border-radius: 4px;
 }
