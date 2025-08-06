@@ -396,8 +396,8 @@ button:disabled {
 }
 
 .agenda-cover {
-    width: 150px;
-    height: 200px;
+    width: 200px;
+    height: 150px;
     object-fit: cover;
     border-radius: 4px;
 }
