@@ -198,12 +198,6 @@ button:disabled {
     cursor: pointer;
 }
 
-#search-results img {
-    height: 200px;
-    width: 150px;
-    margin-bottom: 2px; /* Maak de marge tussen de cover en de titel kleiner */
-}
-
 #search-results p {
     color: black;
     text-decoration: none;
@@ -213,9 +207,9 @@ button:disabled {
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2; /* Zorg ervoor dat de titel wordt afgebroken na de tweede regel */
+    -webkit-line-clamp: 2; 
     cursor: pointer;
-    margin-top: 2px; /* Verklein de marge tussen de cover en de titel */
+    margin-top: 2px; 
 }
 
 #filters {
@@ -392,6 +386,7 @@ button:disabled {
 .book-cover {
     width: 150px;
     height: 200px;
+    margin-bottom: 2px;
     object-fit: cover;
 }
 
@@ -399,5 +394,6 @@ button:disabled {
     width: 200px;
     height: 150px;
     object-fit: cover;
+    margin-bottom: 2px;
     border-radius: 4px;
 }
