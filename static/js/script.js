@@ -85,6 +85,7 @@ async function sendMessage() {
             displayAssistantMessage(`<a href="${data.response.url}" target="_blank">${data.response.url}</a>`);
             displayAssistantMessage(data.response.message);
             previousResults = data.response.results;
+            console.log("[DEBUG] Agenda results:", data.response.results);
             displayAgendaResults(data.response.results);
             await sendStatusKlaar();
             return;
