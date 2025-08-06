@@ -4,6 +4,7 @@ import json
 import requests
 import os
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY')
@@ -52,15 +53,48 @@ def fetch_agenda_results(api_url):
             print("[DEBUG] No <results> element found in XML")
             return []
 
-        for result in result_nodes.findall('result'):
-            title = result.findtext('.//titles/title') or "Geen titel"
-            cover = result.findtext('.//coverimages/coverimage') or ""
-            detail_link = result.findtext('.//detail-page') or "#"
-            results.append({
-                "title": title,
-                "cover": cover,
-                "link": detail_link
-            })
+       from datetime import datetime
+
+for result in result_nodes.findall('result'):
+    title = result.findtext('.//titles/title') or "Geen titel"
+    cover = result.findtext('.//coverimages/coverimage') or ""
+    link = result.findtext('.//detail-page') or "#"
+    summary = result.findtext('.//summaries/summary') or ""
+
+    # Datum & tijd ophalen uit custom/gebeurtenis
+    datum_start = result.findtext('.//custom/gebeurtenis/datum[@start]')
+    datum_eind = result.findtext('.//custom/gebeurtenis/datum[@eind]')
+    gebouw = result.findtext('.//custom/gebeurtenis/gebouw') or ""
+    locatienaam = result.findtext('.//custom/gebeurtenis/locatienaam') or ""
+    
+    date_str = ""
+    time_str = ""
+    if datum_start:
+        try:
+            dt_start = datetime.fromisoformat(datum_start.replace("Z", "+00:00"))
+            date_str = dt_start.strftime("%A %d %B %Y")  # bijv: woensdag 06 augustus 2025
+            time_str = dt_start.strftime("%H:%M")
+        except Exception as e:
+            print("Startdatum parsefout:", e)
+    if datum_eind:
+        try:
+            dt_end = datetime.fromisoformat(datum_eind.replace("Z", "+00:00"))
+            time_str += " - " + dt_end.strftime("%H:%M")
+        except Exception as e:
+            print("Einddatum parsefout:", e)
+
+    location = f"{gebouw} - {locatienaam}".strip(" -")
+
+    results.append({
+        "title": title,
+        "cover": cover,
+        "link": link,
+        "summary": summary,
+        "date": date_str,
+        "time": time_str,
+        "location": location
+    })
+
 
         return results
     except Exception as e:
