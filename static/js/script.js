@@ -46,7 +46,7 @@ async function sendMessage() {
 
     displayUserMessage(userInput);
     showLoader();
-    
+
     const sendButton = document.getElementById('send-button');
     document.getElementById('user-input').value = '';
     sendButton.disabled = true;
@@ -81,6 +81,15 @@ async function sendMessage() {
         hideLoader();
         clearTimeout(timeoutHandle);
 
+        if (data.response && data.response.type === 'agenda') {
+            displayAssistantMessage(`<a href="${data.response.url}" target="_blank">${data.response.url}</a>`);
+            displayAssistantMessage(data.response.message);
+            previousResults = data.response.results;
+            displayAgendaResults(data.response.results);
+            await sendStatusKlaar();
+            return;
+        }
+
         if (!data.response.results) {
             displayAssistantMessage(data.response);
         }
@@ -114,7 +123,7 @@ function resetThread() {
     addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
-    
+
     resetFilters();
     linkedPPNs.clear();
 }
@@ -175,6 +184,22 @@ function displaySearchResults(results) {
             <div onclick="fetchAndShowDetailPage('${result.ppn}')">
                 <img src="https://cover.biblion.nl/coverlist.dll/?doctype=morebutton&bibliotheek=oba&style=0&ppn=${result.ppn}&isbn=&lid=&aut=&ti=&size=150" alt="Cover for PPN ${result.ppn}">
                 <p>${result.short_title}</p>
+            </div>
+        `;
+        searchResultsContainer.appendChild(resultElement);
+    });
+}
+
+function displayAgendaResults(results) {
+    const searchResultsContainer = document.getElementById('search-results');
+    searchResultsContainer.innerHTML = '';
+    results.forEach(result => {
+        const resultElement = document.createElement('div');
+        resultElement.classList.add('search-result');
+        resultElement.innerHTML = `
+            <div onclick="window.open('${result.link}', '_blank')">
+                <img src="${result.cover}" alt="Cover">
+                <p>${result.title}</p>
             </div>
         `;
         searchResultsContainer.appendChild(resultElement);
