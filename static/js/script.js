@@ -177,8 +177,10 @@ function displayAssistantMessage(message) {
 
 function displaySearchResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
-    searchResultsContainer.className = 'book-grid'; // belangrijk
+    searchResultsContainer.classList.remove('agenda-list');
+    searchResultsContainer.classList.add('book-grid');
     searchResultsContainer.innerHTML = '';
+
     results.forEach(result => {
         const resultElement = document.createElement('div');
         resultElement.classList.add('search-result');
@@ -195,9 +197,11 @@ function displaySearchResults(results) {
 }
 
 
+
 function displayAgendaResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
-    searchResultsContainer.className = ''; // verwijder book-grid layout
+    searchResultsContainer.classList.remove('book-grid');
+    searchResultsContainer.classList.add('agenda-list');
     searchResultsContainer.innerHTML = '';
 
     results.forEach(result => {
@@ -207,17 +211,18 @@ function displayAgendaResults(results) {
             <a href="${result.link}" target="_blank" class="agenda-card-link">
                 <img src="${result.cover}" alt="Agenda cover" class="agenda-card-image">
                 <div class="agenda-card-text">
-                    <div class="agenda-date">${result.date || ''}</div>
+                    <div class="agenda-date">${result.date}</div>
                     <div class="agenda-title">${result.title}</div>
-                    <div class="agenda-time">${result.time || ''}</div>
-                    <div class="agenda-location">${result.location || ''}</div>
-                    <div class="agenda-summary">${result.summary || ''}</div>
+                    <div class="agenda-time">${result.time}</div>
+                    <div class="agenda-location">${result.location}</div>
+                    <div class="agenda-summary">${result.summary}</div>
                 </div>
             </a>
         `;
         searchResultsContainer.appendChild(resultElement);
     });
 }
+
 
 
 function showAgendaDetail(result) {
