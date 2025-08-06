@@ -233,7 +233,7 @@ button:disabled {
     align-items: flex-start;
     width: 100%;
     max-width: 720px;
-    background: #fff;
+    background: transparent;
     border-radius: 10px;
     overflow: hidden;
     border: none;
