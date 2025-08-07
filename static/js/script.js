@@ -203,7 +203,10 @@ function displayAgendaResults(results) {
     searchResultsContainer.classList.remove('book-grid');
     searchResultsContainer.classList.add('agenda-list');
 
-    results.forEach(result => {
+    const maxItems = 5; // Aantal items dat we willen weergeven
+    const limitedResults = results.slice(0, maxItems);  // Beperk de resultaten tot 5 items
+
+    limitedResults.forEach(result => {
         // Haal datum en tijd op (in UTC)
         const startDate = new Date(result.date.start);  // Parsing de datum van de API
         const formattedDate = startDate.toLocaleDateString('nl-NL', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -235,6 +238,17 @@ function displayAgendaResults(results) {
         
         searchResultsContainer.appendChild(resultElement);  // Voeg het toe aan de container
     });
+
+    // Voeg de "Meer" knop toe
+    const moreButton = document.createElement('button');
+    moreButton.classList.add('more-button');
+    moreButton.innerHTML = 'Meer';
+    moreButton.onclick = () => {
+        const url = results[0].detailLink;  // De URL is hetzelfde voor alle resultaten, neem de eerste
+        window.open(url, '_blank');
+    };
+
+    searchResultsContainer.appendChild(moreButton);  // Voeg de knop toe onder de lijst van agenda-items
 }
 
 
