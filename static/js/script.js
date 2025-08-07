@@ -204,11 +204,11 @@ function displayAgendaResults(results) {
     searchResultsContainer.classList.add('agenda-list');
 
     results.forEach(result => {
-        // Haal datum en tijd op
-        const startDate = new Date(result.date.start);
+        // Haal datum en tijd op (in UTC)
+        const startDate = new Date(result.date.start);  // Parsing de datum van de API
         const formattedDate = startDate.toLocaleDateString('nl-NL', { year: 'numeric', month: 'long', day: 'numeric' });
         const time = startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-        
+
         // Haal andere gegevens op zoals locatie, samenvatting en titel
         const location = result.location || 'Locatie niet beschikbaar';
         const title = result.title || 'Geen titel beschikbaar';
@@ -236,6 +236,7 @@ function displayAgendaResults(results) {
         searchResultsContainer.appendChild(resultElement);  // Voeg het toe aan de container
     });
 }
+
 
 
 function showAgendaDetail(result) {
