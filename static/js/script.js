@@ -239,6 +239,7 @@ function displayAgendaResults(results) {
 
 
 
+
 function showAgendaDetail(result) {
     const detailContainer = document.getElementById('detail-container');
     detailContainer.innerHTML = `
