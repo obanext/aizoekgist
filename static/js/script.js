@@ -197,7 +197,6 @@ function displaySearchResults(results) {
 }
 
 
-
 function displayAgendaResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
     searchResultsContainer.innerHTML = '';  // Verwijder eerdere zoekresultaten
@@ -237,9 +236,6 @@ function displayAgendaResults(results) {
         searchResultsContainer.appendChild(resultElement);  // Voeg het toe aan de container
     });
 }
-
-
-
 
 
 function showAgendaDetail(result) {
