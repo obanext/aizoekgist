@@ -200,37 +200,44 @@ function displaySearchResults(results) {
 
 function displayAgendaResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
-    searchResultsContainer.innerHTML = '';
+    searchResultsContainer.innerHTML = '';  // Verwijder eerdere zoekresultaten
     searchResultsContainer.classList.remove('book-grid');
     searchResultsContainer.classList.add('agenda-list');
 
     results.forEach(result => {
-        const date = result.date || '';
-        const time = result.time || '';
-        const location = result.location || '';
-        const summary = result.summary || '';
-        const link = result.link || '#';
-        const cover = result.cover || '';
-        const title = result.title || '';
+        // Haal datum en tijd op
+        const startDate = new Date(result.date.start);
+        const formattedDate = startDate.toLocaleDateString('nl-NL', { year: 'numeric', month: 'long', day: 'numeric' });
+        const time = startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        
+        // Haal andere gegevens op zoals locatie, samenvatting en titel
+        const location = result.location || 'Locatie niet beschikbaar';
+        const title = result.title || 'Geen titel beschikbaar';
+        const summary = result.summary || 'Geen beschrijving beschikbaar';
+        const coverImage = result.cover || '';  // Voeg afbeelding toe als beschikbaar
+        const detailLink = result.detailLink || '#';  // Voeg de link naar de detailpagina toe
 
+        // Maak de agenda-card dynamisch aan
         const resultElement = document.createElement('div');
         resultElement.classList.add('agenda-card');
 
         resultElement.innerHTML = `
-    <a href="${link}" target="_blank" class="agenda-card-link">
-        <img src="${cover}" alt="Agenda cover" class="agenda-card-image">
-        <div class="agenda-card-text">
-            <div class="agenda-date">${date}</div>
-            <div class="agenda-title">${title}</div>
-            <div class="agenda-time">${time}</div>
-            <div class="agenda-location">${location}</div>
-            <div class="agenda-summary">${summary}</div>
-        </div>
-    </a>
-`;
-        searchResultsContainer.appendChild(resultElement);
+            <a href="${detailLink}" target="_blank" class="agenda-card-link">
+                <img src="${coverImage}" alt="Agenda cover" class="agenda-card-image">
+                <div class="agenda-card-text">
+                    <div class="agenda-date">${formattedDate}</div>
+                    <div class="agenda-time">${time}</div>
+                    <div class="agenda-title">${title}</div>
+                    <div class="agenda-location">${location}</div>
+                    <div class="agenda-summary">${summary}</div>
+                </div>
+            </a>
+        `;
+        
+        searchResultsContainer.appendChild(resultElement);  // Voeg het toe aan de container
     });
 }
+
 
 
 
