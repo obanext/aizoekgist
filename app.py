@@ -59,25 +59,30 @@ def fetch_agenda_results(api_url):
             link = result.findtext('.//detail-page') or "#"
             summary = result.findtext('.//summaries/summary') or ""
 
-            datum_start = result.findtext('.//custom/gebeurtenis/datum[@start]')
-            datum_eind = result.findtext('.//custom/gebeurtenis/datum[@eind]')
+            datum_start = result.find('.//custom/gebeurtenis/datum').get('start') if result.find('.//custom/gebeurtenis/datum') is not None else None
+            datum_eind = result.find('.//custom/gebeurtenis/datum').get('eind') if result.find('.//custom/gebeurtenis/datum') is not None else None
             gebouw = result.findtext('.//custom/gebeurtenis/gebouw') or ""
             locatienaam = result.findtext('.//custom/gebeurtenis/locatienaam') or ""
 
+            # Ruwe datum/tijd
+            raw_start = datum_start or ""
+            raw_end = datum_eind or ""
+
+            # Geformatteerde strings
             date_str = ""
             time_str = ""
 
-            if datum_start:
+            if raw_start:
                 try:
-                    dt_start = datetime.fromisoformat(datum_start.replace("Z", "+00:00"))
-                    date_str = dt_start.strftime("%A %d %B %Y")  # voorbeeld: woensdag 06 augustus 2025
+                    dt_start = datetime.fromisoformat(raw_start.replace("Z", "+00:00"))
+                    date_str = dt_start.strftime("%A %d %B %Y")
                     time_str = dt_start.strftime("%H:%M")
                 except Exception as e:
                     print("Startdatum parsefout:", e)
 
-            if datum_eind:
+            if raw_end:
                 try:
-                    dt_end = datetime.fromisoformat(datum_eind.replace("Z", "+00:00"))
+                    dt_end = datetime.fromisoformat(raw_end.replace("Z", "+00:00"))
                     time_str += " - " + dt_end.strftime("%H:%M")
                 except Exception as e:
                     print("Einddatum parsefout:", e)
@@ -89,15 +94,20 @@ def fetch_agenda_results(api_url):
                 "cover": cover,
                 "link": link,
                 "summary": summary,
-                "date": date_str,
-                "time": time_str,
-                "location": location
+                "date": date_str,     # geformatteerd
+                "time": time_str,     # geformatteerd
+                "location": location,
+                "raw_date": {         # nieuwe velden voor frontend
+                    "start": raw_start,
+                    "end": raw_end
+                }
             })
 
         return results
     except Exception as e:
         print(f"Agenda API error: {e}")
         return []
+
 
 
 class CustomEventHandler(openai.AssistantEventHandler):
