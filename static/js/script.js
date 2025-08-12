@@ -199,56 +199,63 @@ function displaySearchResults(results) {
 
 function displayAgendaResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
-    searchResultsContainer.innerHTML = '';  // Verwijder eerdere zoekresultaten
+    searchResultsContainer.innerHTML = '';
     searchResultsContainer.classList.remove('book-grid');
     searchResultsContainer.classList.add('agenda-list');
 
-    const maxItems = 5; // Aantal items dat we willen weergeven
-    const limitedResults = results.slice(0, maxItems);  // Beperk de resultaten tot 5 items
+    const maxItems = 5;
+    const limitedResults = results.slice(0, maxItems);
 
     limitedResults.forEach(result => {
-        // Haal datum en tijd op (in UTC)
-        const startDate = new Date(result.date.start);  // Parsing de datum van de API
-        const formattedDate = startDate.toLocaleDateString('nl-NL', { year: 'numeric', month: 'long', day: 'numeric' });
-        const time = startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        let formattedDate = 'Datum niet beschikbaar';
+        let formattedTime = '';
 
-        // Haal andere gegevens op zoals locatie, samenvatting en titel
+        if (result.raw_date && result.raw_date.start) {
+            const startDate = new Date(result.raw_date.start);
+            formattedDate = startDate.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            formattedTime = startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        if (result.raw_date && result.raw_date.end) {
+            const endDate = new Date(result.raw_date.end);
+            formattedTime += ' - ' + endDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        }
+
         const location = result.location || 'Locatie niet beschikbaar';
         const title = result.title || 'Geen titel beschikbaar';
         const summary = result.summary || 'Geen beschrijving beschikbaar';
-        const coverImage = result.cover || '';  // Voeg afbeelding toe als beschikbaar
-        const detailLink = result.detailLink || '#';  // Voeg de link naar de detailpagina toe
+        const coverImage = result.cover || '';
+        const link = result.link || '#';
 
-        // Maak de agenda-card dynamisch aan
         const resultElement = document.createElement('div');
         resultElement.classList.add('agenda-card');
 
         resultElement.innerHTML = `
-            <a href="${detailLink}" target="_blank" class="agenda-card-link">
+            <a href="${link}" target="_blank" class="agenda-card-link">
                 <img src="${coverImage}" alt="Agenda cover" class="agenda-card-image">
                 <div class="agenda-card-text">
                     <div class="agenda-date">${formattedDate}</div>
-                    <div class="agenda-time">${time}</div>
+                    <div class="agenda-time">${formattedTime}</div>
                     <div class="agenda-title">${title}</div>
                     <div class="agenda-location">${location}</div>
                     <div class="agenda-summary">${summary}</div>
                 </div>
             </a>
         `;
-        
-        searchResultsContainer.appendChild(resultElement);  // Voeg het toe aan de container
+
+        searchResultsContainer.appendChild(resultElement);
     });
 
-    // Voeg de "Meer" knop toe
-    const moreButton = document.createElement('button');
-    moreButton.classList.add('more-button');
-    moreButton.innerHTML = 'Meer';
-    moreButton.onclick = () => {
-        const url = results[0].detailLink;  // De URL is hetzelfde voor alle resultaten, neem de eerste
-        window.open(url, '_blank');
-    };
-
-    searchResultsContainer.appendChild(moreButton);  // Voeg de knop toe onder de lijst van agenda-items
+    if (results.length > maxItems) {
+        const moreButton = document.createElement('button');
+        moreButton.classList.add('more-button');
+        moreButton.innerHTML = 'Meer';
+        moreButton.onclick = () => {
+            const url = results[0].link || '#';
+            window.open(url, '_blank');
+        };
+        searchResultsContainer.appendChild(moreButton);
+    }
 }
 
 
