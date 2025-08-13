@@ -3,6 +3,166 @@ let timeoutHandle = null;
 let previousResults = [];
 let linkedPPNs = new Set();
 
+/* ===== Mobiele helpers: panel state, overlay, history ===== */
+function lockBodyScroll(lock) {
+    if (lock) {
+        document.body.classList.add('panel-open');
+        setAriaHidden(true);
+    } else {
+        document.body.classList.remove('panel-open');
+        setAriaHidden(false);
+    }
+}
+function setAriaHidden(isOpen) {
+    // Wanneer een paneel open is, markeer beide panelen als modal (aria-hidden=false) en chat als inert via aria-hidden
+    const chat = document.getElementById('chat-section');
+    const res = document.getElementById('result-section');
+    const fil = document.getElementById('filter-section');
+    const anyOpen = res.classList.contains('open') || fil.classList.contains('open');
+    chat.setAttribute('aria-hidden', anyOpen ? 'true' : 'false');
+    res.setAttribute('aria-hidden', res.classList.contains('open') ? 'false' : 'true');
+    fil.setAttribute('aria-hidden', fil.classList.contains('open') ? 'false' : 'true');
+}
+
+function openFilterPanel(pushHistory = true) {
+    const panel = document.getElementById('filter-section');
+    const other = document.getElementById('result-section');
+    other.classList.remove('open');
+    panel.classList.add('open');
+    lockBodyScroll(true);
+    if (pushHistory) history.pushState({ panel: 'filters' }, '', '#filters');
+}
+function closeFilterPanel(useHistoryBack = false) {
+    const panel = document.getElementById('filter-section');
+    panel.classList.remove('open');
+    if (!document.getElementById('result-section').classList.contains('open')) {
+        lockBodyScroll(false);
+    }
+    if (useHistoryBack && history.state && history.state.panel === 'filters') {
+        history.back();
+    }
+}
+function openResultPanel(pushHistory = true) {
+    const panel = document.getElementById('result-section');
+    const other = document.getElementById('filter-section');
+    other.classList.remove('open');
+    panel.classList.add('open');
+    lockBodyScroll(true);
+    if (pushHistory) history.pushState({ panel: 'results' }, '', '#results');
+}
+function closeResultPanel(useHistoryBack = false) {
+    const panel = document.getElementById('result-section');
+    panel.classList.remove('open');
+    if (!document.getElementById('filter-section').classList.contains('open')) {
+        lockBodyScroll(false);
+    }
+    if (useHistoryBack && history.state && history.state.panel === 'results') {
+        history.back();
+    }
+}
+function closeAnyPanel() {
+    const hasOpen = document.getElementById('filter-section').classList.contains('open') ||
+                    document.getElementById('result-section').classList.contains('open');
+    closeFilterPanel();
+    closeResultPanel();
+    if (hasOpen && history.state && history.state.panel) {
+        // Ga terug naar chat state
+        history.back();
+    }
+}
+
+/* History: initial state + popstate handler */
+(function initHistory() {
+    // Alleen aanroepen na DOM load (window.onload zet nogmaals baseline)
+    if (!history.state) {
+        history.replaceState({ panel: 'chat' }, '', location.pathname);
+    }
+    window.addEventListener('popstate', (e) => {
+        const state = e.state || { panel: 'chat' };
+        const isFilters = state.panel === 'filters';
+        const isResults = state.panel === 'results';
+        if (isFilters) {
+            openFilterPanel(false);
+        } else if (isResults) {
+            openResultPanel(false);
+        } else {
+            closeFilterPanel();
+            closeResultPanel();
+            lockBodyScroll(false);
+        }
+    });
+})();
+
+/* Swipe-gestures (mobiel) */
+let touchStartX = 0;
+let touchStartY = 0;
+let touchActivePanel = null;
+const EDGE_GUTTER = 24;   // px van schermrand
+const SWIPE_THRESH_X = 60;
+const SWIPE_MAX_Y = 50;
+
+function onTouchStart(e) {
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+
+    const resOpen = document.getElementById('result-section').classList.contains('open');
+    const filOpen = document.getElementById('filter-section').classList.contains('open');
+    touchActivePanel = resOpen ? 'results' : (filOpen ? 'filters' : 'chat');
+}
+function onTouchEnd(e) {
+    if (!touchStartX && !touchStartY) return;
+
+    const touch = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]);
+    if (!touch) return;
+
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    const vw = window.innerWidth;
+    const nearLeftEdge = touchStartX <= EDGE_GUTTER;
+    const nearRightEdge = touchStartX >= (vw - EDGE_GUTTER);
+
+    // Alleen horizontale swipes
+    if (absX < SWIPE_THRESH_X || absY > SWIPE_MAX_Y) {
+        touchStartX = touchStartY = 0;
+        return;
+    }
+
+    // Logica:
+    // - Vanuit chat:
+    //   * swipe L->R (dx>0) vanaf linker rand => open resultaten
+    //   * swipe R->L (dx<0) vanaf rechter rand => open filters
+    // - Paneel open:
+    //   * results open + R->L (dx<0) => sluit results
+    //   * filters open + L->R (dx>0) => sluit filters
+
+    if (touchActivePanel === 'chat') {
+        if (dx > 0 && nearLeftEdge) {
+            openResultPanel();
+        } else if (dx < 0 && nearRightEdge) {
+            openFilterPanel();
+        }
+    } else if (touchActivePanel === 'results') {
+        if (dx < 0) {
+            closeResultPanel(true);
+        }
+    } else if (touchActivePanel === 'filters') {
+        if (dx > 0) {
+            closeFilterPanel(true);
+        }
+    }
+
+    touchStartX = touchStartY = 0;
+}
+document.addEventListener('touchstart', onTouchStart, { passive: true });
+document.addEventListener('touchend', onTouchEnd, { passive: true });
+
+/* ===== Bestaande functionaliteit hieronder ongewijzigd, tenzij expliciet hook ===== */
+
 function checkInput() {
     const userInput = document.getElementById('user-input').value.trim();
     const sendButton = document.getElementById('send-button');
@@ -41,9 +201,7 @@ async function startThread() {
 
 async function sendMessage() {
     const userInput = document.getElementById('user-input').value.trim();
-    if (userInput === "") {
-        return;
-    }
+    if (userInput === "") return;
 
     displayUserMessage(userInput);
     showLoader();
@@ -58,9 +216,7 @@ async function sendMessage() {
     document.getElementById('detail-container').style.display = 'none';
     document.getElementById('breadcrumbs').innerHTML = '';
 
-    timeoutHandle = setTimeout(() => {
-        showErrorMessage();
-    }, 30000);
+    timeoutHandle = setTimeout(() => { showErrorMessage(); }, 30000);
 
     try {
         console.debug('[sendMessage] POST /send_message payload', { thread_id, user_input: userInput });
@@ -215,11 +371,9 @@ function displayAgendaResults(results) {
   const limitedResults = results.slice(0, maxItems);
 
   limitedResults.forEach(result => {
-    // Gebruik backend-format als beschikbaar
     let formattedDate = result.date || 'Datum niet beschikbaar';
     let formattedTime = result.time || '';
 
-    // Alleen als backend geen format heeft meegegeven, val dan terug op raw_date
     if ((!formattedDate || !formattedTime) && result.raw_date && result.raw_date.start) {
       const startDate = new Date(result.raw_date.start);
       formattedDate = formattedDate || startDate.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -338,7 +492,7 @@ async function fetchAndShowDetailPage(ppn) {
         }
     } catch (error) {
         console.debug('[fetchAndShowDetailPage] exception', error);
-        displayAssistantMessage('😿 Er is iets misgegaan bij het ophalen van de detailpagina.');
+        displayAssistantMessage('Er is iets misgegaan bij het ophalen van de detailpagina.');
     }
 }
 
@@ -367,9 +521,7 @@ async function applyFiltersAndSend() {
         }
     });
     const filterString = selectedFilters.join('||');
-    if (filterString === "") {
-        return;
-    }
+    if (filterString === "") return;
 
     displayUserMessage(`Filters toegepast: ${filterString}`);
     showLoader();
@@ -415,7 +567,10 @@ async function applyFiltersAndSend() {
         if (data.thread_id) {
             thread_id = data.thread_id;
         }
-        
+
+        // Mobiel: filterpaneel sluiten na toepassen
+        closeFilterPanel(true);
+
         resetFilters();
     } catch (error) {
         console.debug('[applyFiltersAndSend] exception', error);
@@ -479,7 +634,7 @@ async function sendHelpMessage(message) {
     } catch (error) {
         console.debug('[sendHelpMessage] exception', error);
         hideLoader();
-        displayAssistantMessage('😿 Er is iets misgegaan. Probeer opnieuw.');
+        displayAssistantMessage('Er is iets misgegaan. Probeer opnieuw.');
     }
 }
 
@@ -493,9 +648,7 @@ function extractSearchQuery(response) {
 
 function resetFilters() {
     const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = false;
-    });
+    checkboxes.forEach(checkbox => { checkbox.checked = false; });
     checkInput();
 }
 
@@ -511,9 +664,7 @@ function showLoader() {
 
 function hideLoader() {
     const loaderElement = document.getElementById('loader');
-    if (loaderElement) {
-        loaderElement.remove();
-    }
+    if (loaderElement) { loaderElement.remove(); }
     const sendButton = document.getElementById('send-button');
     sendButton.disabled = false;
     sendButton.style.backgroundColor = "#6d5ab0";
@@ -526,7 +677,7 @@ function scrollToBottom() {
 }
 
 function addOpeningMessage() {
-    const openingMessage = "Hoi! Ik ben Nexi, ik help je zoeken naar boeken en informatie in de OBA. Bijvoorbeeld: 'boeken die lijken op Wereldspionnen' of 'heb je informatie over zeezoogdieren?'"
+    const openingMessage = "Hoi! Ik ben Nexi, ik help je zoeken naar boeken en informatie in de OBA. Bijvoorbeeld: 'boeken die lijken op Wereldspionnen' of 'heb je informatie over zeezoogdieren?'";
     const messageContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
     messageElement.classList.add('assistant-message');
@@ -546,13 +697,11 @@ function addPlaceholders() {
 }
 
 function showErrorMessage() {
-    displayAssistantMessage('😿 er is iets misgegaan, we beginnen opnieuw!');
+    displayAssistantMessage('er is iets misgegaan, we beginnen opnieuw');
     hideLoader();
     clearTimeout(timeoutHandle);
     resetThread();
-    setTimeout(() => {
-        clearErrorMessage();
-    }, 2000);
+    setTimeout(() => { clearErrorMessage(); }, 2000);
 }
 
 function clearErrorMessage() {
@@ -563,16 +712,13 @@ function clearErrorMessage() {
     }
 }
 
+/* Init */
 document.getElementById('user-input').addEventListener('input', function() {
     checkInput();
-    if (this.value !== "") {
-        this.placeholder = "";
-    }
+    if (this.value !== "") this.placeholder = "";
 });
 document.getElementById('user-input').addEventListener('keypress', function(event) {
-    if (event.key === 'Enter') {
-        sendMessage();
-    }
+    if (event.key === 'Enter') sendMessage();
 });
 document.querySelectorAll('#filters input[type="checkbox"]').forEach(checkbox => {
     checkbox.addEventListener('change', checkInput);
@@ -585,9 +731,13 @@ window.onload = async () => {
     checkInput();
     document.getElementById('user-input').placeholder = "Vertel me wat je zoekt!";
     const applyFiltersButton = document.querySelector('button[onclick="applyFiltersAndSend()"]');
-    if (applyFiltersButton) {
-        applyFiltersButton.onclick = applyFiltersAndSend;
-    }
+    if (applyFiltersButton) applyFiltersButton.onclick = applyFiltersAndSend;
     resetFilters();
     linkedPPNs.clear();
+
+    // Panelen dicht + history baseline
+    closeFilterPanel();
+    closeResultPanel();
+    if (!history.state) history.replaceState({ panel: 'chat' }, '', location.pathname);
+    setAriaHidden(false);
 };
