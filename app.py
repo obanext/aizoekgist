@@ -266,7 +266,7 @@ def perform_typesense_search_events(params):
         return []
 
 
-# -------- Event detail (deeplink-only link), supports JSON en XML response
+# -------- Event detail JSON response
 def fetch_event_detail(nativeid):
     try:
         url = f'https://zoeken.oba.nl/api/v1/details/?id=|evenementen|{nativeid}&authorization={oba_api_key}&output=json'
@@ -276,108 +276,72 @@ def fetch_event_detail(nativeid):
         if r.status_code != 200:
             return None
 
-        ct = r.headers.get('Content-Type', '').lower()
-        title = ""
-        summary = ""
-        cover = ""
+        data = r.json() if r.headers.get('Content-Type','').lower().startswith('application/json') else {}
+        record = data.get("record", {}) if isinstance(data, dict) else {}
+
+        title = (record.get("titles") or [""])[0] or "Geen titel"
+        summary = (record.get("summaries") or [""])[0] or ""
+        cover = (record.get("coverimages") or [""])[0] or ""
+
         deeplink = ""
-        raw_start = ""
-        raw_end = ""
-        gebouw = ""
-        locatienaam = ""
-
-        if ct.startswith("application/json"):
-            data = r.json()
-            record = data.get("record", {}) if isinstance(data, dict) else {}
-            titles = record.get("titles") or []
-            summaries = record.get("summaries") or []
-            coverimages = record.get("coverimages") or []
-            title = titles[0] if isinstance(titles, list) and titles else (record.get("titles") or "")
-            summary = summaries[0] if isinstance(summaries, list) and summaries else (record.get("summaries") or "")
-            cover = coverimages[0] if isinstance(coverimages, list) and coverimages else (record.get("coverimages") or "")
-
-            custom = record.get("custom", {}) if isinstance(record.get("custom", {}), dict) else {}
-            evenement = custom.get("evenement", {}) if isinstance(custom.get("evenement", {}), dict) else {}
-            deeplink = evenement.get("deeplink") or evenement.get("url") or ""
-
-            gebeurtenis = custom.get("gebeurtenis", {}) if isinstance(custom.get("gebeurtenis", {}), dict) else {}
-            datum = gebeurtenis.get("datum", {}) if isinstance(gebeurtenis.get("datum", {}), dict) else {}
-            raw_start = datum.get("start", "") or ""
-            raw_end = datum.get("eind", "") or ""
-            gebouw = gebeurtenis.get("gebouw", "") or ""
-            locatienaam = gebeurtenis.get("locatienaam", "") or ""
-
-        else:
-            root = ET.fromstring(r.text)
-
-            t_node = root.find('.//titles/title')
-            title = (t_node.text or "").strip() if t_node is not None else ""
-
-            s_node = root.find('.//summaries/summary')
-            summary = (s_node.text or "").strip() if s_node is not None else ""
-
-            c_node = root.find('.//coverimages/coverimage')
-            cover = (c_node.text or "").strip() if c_node is not None else ""
-
-            dl_node = root.find('.//custom/evenement/deeplink')
-            if dl_node is not None and dl_node.text:
-                deeplink = dl_node.text.strip()
-            else:
-                er_node = root.find('.//eresources/eresource[@type="evenement"]')
-                deeplink = (er_node.get('url') or "").strip() if er_node is not None else ""
-
-            d_node = root.find('.//custom/gebeurtenis/datum')
-            raw_start = d_node.get('start') if d_node is not None and d_node.get('start') else ""
-            raw_end = d_node.get('eind') if d_node is not None and d_node.get('eind') else ""
-
-            g_node = root.find('.//custom/gebeurtenis/gebouw')
-            l_node = root.find('.//custom/gebeurtenis/locatienaam')
-            gebouw = (g_node.text or "").strip() if g_node is not None else ""
-            locatienaam = (l_node.text or "").strip() if l_node is not None else ""
-
-            if not title:
-                ev_node = root.find('.//custom/evenement')
-                if ev_node is not None:
-                    title = ev_node.get('titel') or ev_node.get('title') or title
-                if not summary and ev_node is not None:
-                    summary = ev_node.get('omschrijving') or ev_node.get('intro') or summary
-                if not cover and ev_node is not None:
-                    cover = ev_node.get('afbeelding') or cover
-
-        # Link: ALTIJD deeplink
+        for item in record.get("custom", []) or []:
+            if item.get("type") == "evenement":
+                text = item.get("text") or ""
+                import re
+                m = re.search(r'https?://\S+', text)
+                if m:
+                    deeplink = m.group(0).strip()
+                    break
         link = deeplink or "#"
 
-        # Netjes geformatteerde datum/tijd (ook raw meegeven voor frontend)
+        raw_start = ""
+        raw_end = ""
+        for item in record.get("custom", []) or []:
+            if item.get("type") == "branches":
+                text = item.get("text") or ""
+                import re
+                m = re.search(r'(\d{8})$', text)
+                if m:
+                    y, mo, d = m.group(1)[0:4], m.group(1)[4:6], m.group(1)[6:8]
+                    raw_start = f"{y}-{mo}-{d}T00:00:00Z"
+                break
+
+        gebouw = ""
+        locatienaam = ""
+        for item in record.get("custom", []) or []:
+            if item.get("type") == "gebeurtenis":
+                text = (item.get("text") or "").replace("\n", " ")
+                import re
+                mg = re.search(r'(OBA\s+[A-Za-z0-9&\-\s]+)', text)
+                if mg:
+                    gebouw = mg.group(1).strip()
+                mz = re.search(r'([A-Z][A-Za-z0-9\s\-]*zaal(?:\s*\d+(?:ste|de)\s*etage)?|[A-Z][A-Za-z0-9\s\-]*etage)', text)
+                if mz:
+                    locatienaam = mz.group(1).strip()
+                break
+
         date_str = ""
         time_str = ""
         if raw_start:
             try:
-                dt_start = datetime.fromisoformat(raw_start.replace("Z", "+00:00"))
-                date_str = dt_start.strftime("%A %d %B %Y")
-                time_str = dt_start.strftime("%H:%M")
-            except Exception:
-                pass
-        if raw_end:
-            try:
-                dt_end = datetime.fromisoformat(raw_end.replace("Z", "+00:00"))
-                time_str = f"{time_str} - {dt_end.strftime('%H:%M')}" if time_str else dt_end.strftime("%H:%M")
+                dt = datetime.fromisoformat(raw_start.replace("Z","+00:00"))
+                date_str = dt.strftime("%A %d %B %Y")
             except Exception:
                 pass
 
         location = f"{gebouw} - {locatienaam}".strip(" -")
 
-        logger.info(f"event_detail_parsed nativeid={nativeid} has_title={bool(title)} has_link={bool(link)}")
+        logger.info(f"event_detail_parsed nativeid={nativeid} has_title={bool(title)} has_link={bool(link)} has_date={bool(raw_start)}")
         return {
-            "title": title or "Geen titel",
-            "cover": cover or "",
-            "link": link or "#",
-            "summary": summary or "",
+            "title": title,
+            "cover": cover,
+            "link": link,
+            "summary": summary,
             "date": date_str,
             "time": time_str,
             "location": location,
             "raw_date": {"start": raw_start, "end": raw_end}
         }
-
     except Exception:
         logger.exception(f"event_detail_error nativeid={nativeid}")
         return None
