@@ -206,64 +206,63 @@ function displaySearchResults(results) {
 }
 
 function displayAgendaResults(results) {
-    const searchResultsContainer = document.getElementById('search-results');
-    searchResultsContainer.innerHTML = '';
-    searchResultsContainer.classList.remove('book-grid');
-    searchResultsContainer.classList.add('agenda-list');
+  const searchResultsContainer = document.getElementById('search-results');
+  searchResultsContainer.innerHTML = '';
+  searchResultsContainer.classList.remove('book-grid');
+  searchResultsContainer.classList.add('agenda-list');
 
-    const maxItems = 5;
-    const limitedResults = results.slice(0, maxItems);
+  const maxItems = 5;
+  const limitedResults = results.slice(0, maxItems);
 
-    limitedResults.forEach(result => {
-        let formattedDate = 'Datum niet beschikbaar';
-        let formattedTime = '';
+  limitedResults.forEach(result => {
+    // Gebruik backend-format als beschikbaar
+    let formattedDate = result.date || 'Datum niet beschikbaar';
+    let formattedTime = result.time || '';
 
-        if (result.raw_date && result.raw_date.start) {
-            const startDate = new Date(result.raw_date.start);
-            formattedDate = startDate.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            formattedTime = startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-        }
-
-        if (result.raw_date && result.raw_date.end) {
-            const endDate = new Date(result.raw_date.end);
-            formattedTime += ' - ' + endDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-        }
-
-        const location = result.location || 'Locatie niet beschikbaar';
-        const title = result.title || 'Geen titel beschikbaar';
-        const summary = result.summary || 'Geen beschrijving beschikbaar';
-        const coverImage = result.cover || '';
-        const link = result.link || '#';
-
-        const resultElement = document.createElement('div');
-        resultElement.classList.add('agenda-card');
-
-        resultElement.innerHTML = `
-            <a href="${link}" target="_blank" class="agenda-card-link">
-                <img src="${coverImage}" alt="Agenda cover" class="agenda-card-image">
-                <div class="agenda-card-text">
-                    <div class="agenda-date">${formattedDate}</div>
-                    <div class="agenda-time">${formattedTime}</div>
-                    <div class="agenda-title">${title}</div>
-                    <div class="agenda-location">${location}</div>
-                    <div class="agenda-summary">${summary}</div>
-                </div>
-            </a>
-        `;
-
-        searchResultsContainer.appendChild(resultElement);
-    });
-
-    if (results.length > maxItems) {
-        const moreButton = document.createElement('button');
-        moreButton.classList.add('more-button');
-        moreButton.innerHTML = 'Meer';
-        moreButton.onclick = () => {
-            const url = results[0].link || '#';
-            window.open(url, '_blank');
-        };
-        searchResultsContainer.appendChild(moreButton);
+    // Alleen als backend geen format heeft meegegeven, val dan terug op raw_date
+    if ((!formattedDate || !formattedTime) && result.raw_date && result.raw_date.start) {
+      const startDate = new Date(result.raw_date.start);
+      formattedDate = formattedDate || startDate.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      formattedTime = formattedTime || startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
     }
+    if ((!formattedTime) && result.raw_date && result.raw_date.end) {
+      const endDate = new Date(result.raw_date.end);
+      formattedTime = (formattedTime ? (formattedTime + ' - ') : '') + endDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    const location = result.location || 'Locatie niet beschikbaar';
+    const title = result.title || 'Geen titel beschikbaar';
+    const summary = result.summary || 'Geen beschrijving beschikbaar';
+    const coverImage = result.cover || '';
+    const link = result.link || '#';
+
+    const el = document.createElement('div');
+    el.classList.add('agenda-card');
+    el.innerHTML = `
+      <a href="${link}" target="_blank" class="agenda-card-link">
+        <img src="${coverImage}" alt="Agenda cover" class="agenda-card-image">
+        <div class="agenda-card-text">
+          <div class="agenda-date">${formattedDate}</div>
+          <div class="agenda-time">${formattedTime}</div>
+          <div class="agenda-title">${title}</div>
+          <div class="agenda-location">${location}</div>
+          <div class="agenda-summary">${summary}</div>
+        </div>
+      </a>
+    `;
+    searchResultsContainer.appendChild(el);
+  });
+
+  if (results.length > maxItems) {
+    const moreButton = document.createElement('button');
+    moreButton.classList.add('more-button');
+    moreButton.innerHTML = 'Meer';
+    moreButton.onclick = () => {
+      const url = results[0].link || '#';
+      window.open(url, '_blank');
+    };
+    searchResultsContainer.appendChild(moreButton);
+  }
 }
 
 function showAgendaDetail(result) {
