@@ -342,6 +342,7 @@ button:disabled {
     gap: 6px;
 }
 .icon-btn {
+    position: relative; /* nodig om badge te positioneren t.o.v. knop */
     background: white;
     border: 1px solid #ccc;
     border-radius: 10px;
@@ -358,7 +359,7 @@ button:disabled {
     position: absolute;
     top: -4px;
     right: -4px;
-    background: red;
+    background: #6d5ab0; /* paars */
     color: white;
     font-size: 12px;
     padding: 2px 5px;
@@ -366,6 +367,7 @@ button:disabled {
     min-width: 18px;
     text-align: center;
     font-weight: bold;
+    line-height: 1;
 }
 
 .icon-btn.enlarged {
