@@ -1,11 +1,3 @@
-/*
-  Nexi Cat Chat — Frontend (CSS)
-  Doel:
-  - Stijlen voor chat, resultaten, filters
-  - Mobiele off-canvas panelen met overlay, back-knoppen en icon-actions
-  - Badge stijl en animatie
-*/
-
 /* Fonts */
 @font-face {
     font-family: 'Avenir Black';
@@ -31,6 +23,7 @@ body {
     width: 90%;
     height: 90%;
     margin: 5% 2.5%;
+    position: relative; 
 }
 #chat-section,
 #result-section,
@@ -333,12 +326,14 @@ button:disabled {
 /* Mobiele acties en badge */
 #mobile-actions {
     display: none;
-    position: absolute;
+    position: absolute; 
     top: 10px;
     right: 10px;
     gap: 6px;
     z-index: 1002;
+    pointer-events: auto;
 }
+
 .icon-btn {
     position: relative;
     background: white;
