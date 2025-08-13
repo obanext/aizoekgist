@@ -266,85 +266,75 @@ def perform_typesense_search_events(params):
         return []
 
 
-# -------- Event detail JSON response
+# -------- Event detail JSON/XML response
 def fetch_event_detail(nativeid):
     try:
-        url = f'https://zoeken.oba.nl/api/v1/details/?id=|evenementen|{nativeid}&authorization={oba_api_key}&output=json'
-        logger.info(f"event_detail_fetch nativeid={nativeid} url={url}")
-        r = requests.get(url, timeout=15)
-        logger.info(f"event_detail_response nativeid={nativeid} status={r.status_code}")
-        if r.status_code != 200:
+        # JSON-endpoint (zonder datum)
+        url_json = f'https://zoeken.oba.nl/api/v1/details/?id=|evenementen|{nativeid}&authorization={oba_api_key}&output=json'
+        r_json = requests.get(url_json, timeout=15)
+        if r_json.status_code != 200:
             return None
+        data = r_json.json().get("record", {})
 
-        data = r.json() if r.headers.get('Content-Type','').lower().startswith('application/json') else {}
-        record = data.get("record", {}) if isinstance(data, dict) else {}
-
-        title = (record.get("titles") or [""])[0] or "Geen titel"
-        summary = (record.get("summaries") or [""])[0] or ""
-        cover = (record.get("coverimages") or [""])[0] or ""
-
+        title = data.get("titles", [""])[0] if isinstance(data.get("titles"), list) else ""
+        summary = data.get("summaries", [""])[0] if isinstance(data.get("summaries"), list) else ""
+        cover = data.get("coverimages", [""])[0] if isinstance(data.get("coverimages"), list) else ""
         deeplink = ""
-        for item in record.get("custom", []) or []:
-            if item.get("type") == "evenement":
-                text = item.get("text") or ""
-                import re
-                m = re.search(r'https?://\S+', text)
-                if m:
-                    deeplink = m.group(0).strip()
-                    break
-        link = deeplink or "#"
-
-        raw_start = ""
-        raw_end = ""
-        for item in record.get("custom", []) or []:
-            if item.get("type") == "branches":
-                text = item.get("text") or ""
-                import re
-                m = re.search(r'(\d{8})$', text)
-                if m:
-                    y, mo, d = m.group(1)[0:4], m.group(1)[4:6], m.group(1)[6:8]
-                    raw_start = f"{y}-{mo}-{d}T00:00:00Z"
+        for c in data.get("custom", []):
+            if c.get("type") == "evenement":
+                parts = c.get("text", "").split("http")
+                if len(parts) == 2:
+                    deeplink = "http" + parts[1].strip()
                 break
 
-        gebouw = ""
-        locatienaam = ""
-        for item in record.get("custom", []) or []:
-            if item.get("type") == "gebeurtenis":
-                text = (item.get("text") or "").replace("\n", " ")
-                import re
-                mg = re.search(r'(OBA\s+[A-Za-z0-9&\-\s]+)', text)
-                if mg:
-                    gebouw = mg.group(1).strip()
-                mz = re.search(r'([A-Z][A-Za-z0-9\s\-]*zaal(?:\s*\d+(?:ste|de)\s*etage)?|[A-Z][A-Za-z0-9\s\-]*etage)', text)
-                if mz:
-                    locatienaam = mz.group(1).strip()
-                break
+        # XML-endpoint (voor datum en locatie)
+        url_xml = f'https://zoeken.oba.nl/api/v1/details/?id=|evenementen|{nativeid}&authorization={oba_api_key}'
+        r_xml = requests.get(url_xml, timeout=15)
+        if r_xml.status_code != 200:
+            return None
+        root = ET.fromstring(r_xml.text)
+
+        d_node = root.find('.//custom/gebeurtenis/datum')
+        raw_start = d_node.get('start') if d_node is not None else ""
+        raw_end = d_node.get('eind') if d_node is not None else ""
+
+        gebouw_node = root.find('.//custom/gebeurtenis/gebouw')
+        zaal_node = root.find('.//custom/gebeurtenis/locatienaam')
+        gebouw = gebouw_node.text.strip() if gebouw_node is not None and gebouw_node.text else ""
+        zaal = zaal_node.text.strip() if zaal_node is not None and zaal_node.text else ""
+        location = f"{gebouw} {zaal}".strip()
 
         date_str = ""
         time_str = ""
         if raw_start:
             try:
-                dt = datetime.fromisoformat(raw_start.replace("Z","+00:00"))
-                date_str = dt.strftime("%A %d %B %Y")
-            except Exception:
+                dt_start = datetime.fromisoformat(raw_start.replace("Z", "+00:00"))
+                date_str = dt_start.strftime("%A %d %B %Y")
+                time_str = dt_start.strftime("%H:%M")
+            except:
+                pass
+        if raw_end:
+            try:
+                dt_end = datetime.fromisoformat(raw_end.replace("Z", "+00:00"))
+                time_str += f" - {dt_end.strftime('%H:%M')}"
+            except:
                 pass
 
-        location = f"{gebouw} - {locatienaam}".strip(" -")
-
-        logger.info(f"event_detail_parsed nativeid={nativeid} has_title={bool(title)} has_link={bool(link)} has_date={bool(raw_start)}")
         return {
-            "title": title,
+            "title": title or "Geen titel",
             "cover": cover,
-            "link": link,
+            "link": deeplink,
             "summary": summary,
             "date": date_str,
             "time": time_str,
             "location": location,
             "raw_date": {"start": raw_start, "end": raw_end}
         }
-    except Exception:
-        logger.exception(f"event_detail_error nativeid={nativeid}")
+
+    except:
+        logger.exception("event_detail_error")
         return None
+
 
 
 def build_agenda_results_from_nativeids(nativeids):
