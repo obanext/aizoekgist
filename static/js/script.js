@@ -1,11 +1,3 @@
-/*
-  Nexi Cat Chat — Frontend (JS)
-  Doel:
-  - Besturen van chat, zoeken, resultaten tonen, filters toepassen
-  - Mobiele UI: panelen voor resultaten en filters (open/sluit + swipe + history)
-  - Badge op result-knop die tijdelijk vergroot wordt bij nieuwe resultaten
-*/
-
 let thread_id = null;
 let timeoutHandle = null;
 let previousResults = [];
