@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, url_for, g
+from flask import Flask, request, jsonify, render_template, g
 import openai
 import json
 import requests
@@ -11,17 +11,20 @@ import time
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY')
 
+# Env
 openai_api_key = os.environ.get('OPENAI_API_KEY')
 typesense_api_key = os.environ.get('TYPESENSE_API_KEY')
 typesense_api_url = os.environ.get('TYPESENSE_API_URL')
 oba_api_key = os.environ.get('OBA_API_KEY')
 openai.api_key = openai_api_key
 
+# Assistants
 assistant_id_1 = 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
 assistant_id_2 = 'asst_iN7gutrYjI18E97U42GODe4B'
 assistant_id_3 = 'asst_NLL8P78p9kUuiq08vzoRQ7tn'
 assistant_id_4 = 'asst_9Adxq0d95aUQbMfEGtqJLVx1'
 
+# Logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
 logger = logging.getLogger('oba_app')
 logger.setLevel(getattr(logging, log_level, logging.INFO))
@@ -31,9 +34,11 @@ if not logger.handlers:
     logger.addHandler(log_handler)
 logger.propagate = False
 
+
 @app.before_request
 def _start_timer():
     g.start_time = time.time()
+
 
 @app.after_request
 def _log_response(response):
@@ -44,30 +49,38 @@ def _log_response(response):
         pass
     return response
 
+
 @app.errorhandler(Exception)
 def _handle_error(e):
     logger.exception(f"unhandled_error path={request.path}")
     return jsonify({'error': 'internal server error'}), 500
 
+
+# -------- Helpers to parse assistant "routes"
 def extract_search_query(response):
     marker = "SEARCH_QUERY:"
-    if marker in response:
+    if response and marker in response:
         return response.split(marker, 1)[1].strip()
     return None
+
 
 def extract_comparison_query(response):
     marker = "VERGELIJKINGS_QUERY:"
-    if marker in response:
+    if response and marker in response:
         return response.split(marker, 1)[1].strip()
     return None
+
 
 def extract_agenda_query(response):
     marker = "AGENDA_VRAAG:"
-    if marker in response:
+    if response and marker in response:
         return response.split(marker, 1)[1].strip()
     return None
 
+
+# -------- Agenda XML fetch (route A)
 def fetch_agenda_results(api_url):
+    """Haalt agenda-resultaten op (XML) en zet ze om naar cards, met deeplink-only."""
     try:
         if "authorization=" not in api_url:
             api_url += f"&authorization={oba_api_key}"
@@ -75,24 +88,33 @@ def fetch_agenda_results(api_url):
         response = requests.get(api_url, timeout=15)
         response.raise_for_status()
         root = ET.fromstring(response.text)
+
         results = []
         result_nodes = root.find('results')
         if result_nodes is None:
             logger.info("agenda_xml_no_results")
             return []
+
         for result in result_nodes.findall('result'):
             title = result.findtext('.//titles/title') or "Geen titel"
             cover = result.findtext('.//coverimages/coverimage') or ""
-            ldeeplink_node = result.find('.//custom/evenement/deeplink')
-            link = (deeplink_node.text.strip() if deeplink_node is not None and deeplink_node.text else "") or "#"
+
+            # FIX: gebruik ALLEEN deeplink
+            deeplink_node = result.find('.//custom/evenement/deeplink')
+            link = (deeplink_node.text.strip() if deeplink_node is not None and deeplink_node.text else "#")
+
             summary = result.findtext('.//summaries/summary') or ""
+
+            # Datum/locatie
             datum_node = result.find('.//custom/gebeurtenis/datum')
             datum_start = datum_node.get('start') if datum_node is not None else None
             datum_eind = datum_node.get('eind') if datum_node is not None else None
             gebouw = result.findtext('.//custom/gebeurtenis/gebouw') or ""
             locatienaam = result.findtext('.//custom/gebeurtenis/locatienaam') or ""
+
             raw_start = datum_start or ""
             raw_end = datum_eind or ""
+
             date_str = ""
             time_str = ""
             if raw_start:
@@ -108,7 +130,9 @@ def fetch_agenda_results(api_url):
                     time_str += " - " + dt_end.strftime("%H:%M")
                 except Exception:
                     pass
+
             location = f"{gebouw} - {locatienaam}".strip(" -")
+
             results.append({
                 "title": title,
                 "cover": cover,
@@ -119,12 +143,16 @@ def fetch_agenda_results(api_url):
                 "location": location,
                 "raw_date": {"start": raw_start, "end": raw_end}
             })
+
         logger.info(f"agenda_xml_results count={len(results)}")
         return results
-    except Exception as e:
+
+    except Exception:
         logger.exception("agenda_xml_error")
         return []
 
+
+# -------- OpenAI streaming wrapper
 class CustomEventHandler(openai.AssistantEventHandler):
     def __init__(self):
         super().__init__()
@@ -142,6 +170,7 @@ class CustomEventHandler(openai.AssistantEventHandler):
     def on_tool_call_delta(self, delta, snapshot):
         pass
 
+
 def call_assistant(assistant_id, user_input, thread_id=None):
     try:
         if thread_id is None:
@@ -150,16 +179,20 @@ def call_assistant(assistant_id, user_input, thread_id=None):
             logger.info(f"openai_new_thread thread_id={thread_id}")
         else:
             openai.beta.threads.messages.create(thread_id=thread_id, role="user", content=user_input)
+
         logger.info(f"openai_run_start thread_id={thread_id} assistant_id={assistant_id}")
         event_handler = CustomEventHandler()
         with openai.beta.threads.runs.stream(thread_id=thread_id, assistant_id=assistant_id, event_handler=event_handler) as stream:
             stream.until_done()
         logger.info(f"openai_run_done thread_id={thread_id} len={len(event_handler.response_text)}")
         return event_handler.response_text, thread_id
-    except Exception as e:
-        logger.exception("openai_error")
-        return str(e), thread_id
 
+    except Exception:
+        logger.exception("openai_error")
+        return "ERROR: OpenAI call failed.", thread_id
+
+
+# -------- Typesense parsing & calls
 def parse_assistant_message(content):
     try:
         parsed = json.loads(content)
@@ -173,6 +206,7 @@ def parse_assistant_message(content):
     except json.JSONDecodeError:
         logger.warning("parse_assistant_message_json_error")
         return None
+
 
 def perform_typesense_search(params):
     headers = {'Content-Type': 'application/json', 'X-TYPESENSE-API-KEY': typesense_api_key}
@@ -199,6 +233,7 @@ def perform_typesense_search(params):
         logger.warning(f"typesense_books_error status={response.status_code}")
         return {"error": response.status_code, "message": response.text}
 
+
 def perform_typesense_search_events(params):
     headers = {'Content-Type': 'application/json', 'X-TYPESENSE-API-KEY': typesense_api_key}
     body = {
@@ -218,13 +253,20 @@ def perform_typesense_search_events(params):
     if response.status_code == 200:
         data = response.json()
         hits = data["results"][0]["hits"]
-        nativeids = [h["document"].get("nativeid") or h["document"].get("native_id") for h in hits if (h.get("document") and (h["document"].get("nativeid") or h["document"].get("native_id")))]
+        # Support zowel `nativeid` als `native_id` in Typesense document
+        nativeids = [
+            h["document"].get("nativeid") or h["document"].get("native_id")
+            for h in hits
+            if h.get("document") and (h["document"].get("nativeid") or h["document"].get("native_id"))
+        ]
         logger.info(f"typesense_events_hits count={len(hits)} nativeids={len(nativeids)}")
         return nativeids
     else:
         logger.warning(f"typesense_events_error status={response.status_code}")
         return []
 
+
+# -------- Event detail (deeplink-only link), supports JSON en XML response
 def fetch_event_detail(nativeid):
     try:
         url = f'https://zoeken.oba.nl/api/v1/details/?id=|evenementen|{nativeid}&authorization={oba_api_key}&output=json'
@@ -239,7 +281,6 @@ def fetch_event_detail(nativeid):
         summary = ""
         cover = ""
         deeplink = ""
-        detail_page = ""
         raw_start = ""
         raw_end = ""
         gebouw = ""
@@ -247,16 +288,14 @@ def fetch_event_detail(nativeid):
 
         if ct.startswith("application/json"):
             data = r.json()
-            record = data.get("record", {})
-
+            record = data.get("record", {}) if isinstance(data, dict) else {}
             titles = record.get("titles") or []
             summaries = record.get("summaries") or []
             coverimages = record.get("coverimages") or []
-            title = titles[0] if isinstance(titles, list) and titles else record.get("titles", "") or ""
-            summary = summaries[0] if isinstance(summaries, list) and summaries else record.get("summaries", "") or ""
-            cover = coverimages[0] if isinstance(coverimages, list) and coverimages else record.get("coverimages", "") or ""
+            title = titles[0] if isinstance(titles, list) and titles else (record.get("titles") or "")
+            summary = summaries[0] if isinstance(summaries, list) and summaries else (record.get("summaries") or "")
+            cover = coverimages[0] if isinstance(coverimages, list) and coverimages else (record.get("coverimages") or "")
 
-            detail_page = record.get("detail-page") or ""
             custom = record.get("custom", {}) if isinstance(record.get("custom", {}), dict) else {}
             evenement = custom.get("evenement", {}) if isinstance(custom.get("evenement", {}), dict) else {}
             deeplink = evenement.get("deeplink") or evenement.get("url") or ""
@@ -267,6 +306,7 @@ def fetch_event_detail(nativeid):
             raw_end = datum.get("eind", "") or ""
             gebouw = gebeurtenis.get("gebouw", "") or ""
             locatienaam = gebeurtenis.get("locatienaam", "") or ""
+
         else:
             root = ET.fromstring(r.text)
 
@@ -286,9 +326,6 @@ def fetch_event_detail(nativeid):
                 er_node = root.find('.//eresources/eresource[@type="evenement"]')
                 deeplink = (er_node.get('url') or "").strip() if er_node is not None else ""
 
-            dp_node = root.find('.//detail-page')
-            detail_page = (dp_node.text or "").strip() if dp_node is not None else ""
-
             d_node = root.find('.//custom/gebeurtenis/datum')
             raw_start = d_node.get('start') if d_node is not None and d_node.get('start') else ""
             raw_end = d_node.get('eind') if d_node is not None and d_node.get('eind') else ""
@@ -307,8 +344,10 @@ def fetch_event_detail(nativeid):
                 if not cover and ev_node is not None:
                     cover = ev_node.get('afbeelding') or cover
 
-        link = deeplink or detail_page or ""
+        # Link: ALTIJD deeplink
+        link = deeplink or "#"
 
+        # Netjes geformatteerde datum/tijd (ook raw meegeven voor frontend)
         date_str = ""
         time_str = ""
         if raw_start:
@@ -338,9 +377,11 @@ def fetch_event_detail(nativeid):
             "location": location,
             "raw_date": {"start": raw_start, "end": raw_end}
         }
+
     except Exception:
         logger.exception(f"event_detail_error nativeid={nativeid}")
         return None
+
 
 def build_agenda_results_from_nativeids(nativeids):
     results = []
@@ -351,9 +392,12 @@ def build_agenda_results_from_nativeids(nativeids):
     logger.info(f"agenda_build_from_nativeids count_in={len(nativeids)} count_out={len(results)}")
     return results
 
+
+# -------- Routes
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/start_thread', methods=['POST'])
 def start_thread():
@@ -364,6 +408,7 @@ def start_thread():
     except Exception as e:
         logger.exception("start_thread_error")
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
@@ -387,7 +432,7 @@ def send_message():
             if search_params:
                 coll = search_params.get("collection")
                 logger.info(f"collection={coll}")
-                if coll == "obadbevents13825":
+                if coll == "obadbevents13825":   # <-- Pas aan indien je een andere events-collectie gebruikt
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
@@ -438,6 +483,7 @@ def send_message():
 
             logger.info(f"agenda_detect keys={list(agenda_obj.keys())}")
 
+            # Route A: directe API/URL van agent
             if "API" in agenda_obj and "URL" in agenda_obj:
                 logger.info("agenda_path=A")
                 results = fetch_agenda_results(agenda_obj["API"])
@@ -451,6 +497,7 @@ def send_message():
                     'thread_id': thread_id
                 })
 
+            # Route B: Typesense query object van agent
             if "q" in agenda_obj and "collection" in agenda_obj:
                 logger.info("agenda_path=B")
                 params = {
@@ -460,7 +507,7 @@ def send_message():
                     "vector_query": agenda_obj.get("vector_query", "embedding:([], alpha: 0.8)"),
                     "filter_by": agenda_obj.get("filter_by", "")
                 }
-                if params["collection"] == "obadbevents13825":
+                if params["collection"] == "obadbevents13825":  # <-- Pas aan indien je een andere events-collectie gebruikt
                     nativeids = perform_typesense_search_events(params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
@@ -494,6 +541,7 @@ def send_message():
         logger.exception("send_message_error")
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/apply_filters', methods=['POST'])
 def apply_filters():
     try:
@@ -502,10 +550,12 @@ def apply_filters():
         filter_values = data['filter_values']
         assistant_id = data['assistant_id']
         logger.info(f"apply_filters_in thread_id={thread_id} assistant_id={assistant_id} filters_len={len(filter_values)}")
+
         response_text, thread_id = call_assistant(assistant_id, filter_values, thread_id)
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
         logger.info(f"apply_filters_paths search={bool(search_query)} compare={bool(comparison_query)}")
+
         if search_query:
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
             search_params = parse_assistant_message(response_text_2)
@@ -513,14 +563,23 @@ def apply_filters():
             if search_params:
                 coll = search_params.get("collection")
                 logger.info(f"collection={coll}")
-                if coll == "obadbevents13825":
+                if coll == "obadbevents13825":  # <-- Pas aan indien je een andere events-collectie gebruikt
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     logger.info(f"agenda_results_count={len(agenda_results)}")
-                    return jsonify({'response': {'type': 'agenda', 'url': (agenda_results[0]["link"] if agenda_results else ""), 'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?", 'results': agenda_results}, 'thread_id': thread_id})
+                    return jsonify({
+                        'response': {
+                            'type': 'agenda',
+                            'url': (agenda_results[0]["link"] if agenda_results else ""),
+                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                            'results': agenda_results
+                        },
+                        'thread_id': thread_id
+                    })
                 results = perform_typesense_search(search_params)
                 return jsonify({'results': results.get('results', []), 'thread_id': thread_id})
             return jsonify({'response': response_text_2, 'thread_id': thread_id})
+
         elif comparison_query:
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
@@ -528,20 +587,32 @@ def apply_filters():
             if search_params:
                 coll = search_params.get("collection")
                 logger.info(f"collection={coll}")
-                if coll == "obadbevents13825":
+                if coll == "obadbevents13825":  # <-- Pas aan indien je een andere events-collectie gebruikt
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     logger.info(f"agenda_results_count={len(agenda_results)}")
-                    return jsonify({'response': {'type': 'agenda', 'url': (agenda_results[0]["link"] if agenda_results else ""), 'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?", 'results': agenda_results}, 'thread_id': thread_id})
+                    return jsonify({
+                        'response': {
+                            'type': 'agenda',
+                            'url': (agenda_results[0]["link"] if agenda_results else ""),
+                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                            'results': agenda_results
+                        },
+                        'thread_id': thread_id
+                    })
                 results = perform_typesense_search(search_params)
                 return jsonify({'results': results.get('results', []), 'thread_id': thread_id})
             return jsonify({'response': response_text_3, 'thread_id': thread_id})
+
         logger.info("apply_filters_fallback_text")
         return jsonify({'response': response_text, 'thread_id': thread_id})
-    except Exception as e:
+
+    except Exception:
         logger.exception("apply_filters_error")
         return jsonify({'error': str(e)}), 500
 
+
+# -------- Proxies voor boeken (PPN -> item_id -> details)
 @app.route('/proxy/resolver', methods=['GET'])
 def proxy_resolver():
     ppn = request.args.get('ppn')
@@ -550,15 +621,17 @@ def proxy_resolver():
     response = requests.get(url, timeout=15)
     return response.content, response.status_code, response.headers.items()
 
+
 @app.route('/proxy/details', methods=['GET'])
 def proxy_details():
     item_id = request.args.get('item_id')
     url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization={oba_api_key}&output=json'
     logger.info(f"proxy_details url={url}")
     response = requests.get(url, timeout=15)
-    if response.headers.get('Content-Type','').startswith('application/json'):
+    if response.headers.get('Content-Type', '').startswith('application/json'):
         return jsonify(response.json()), response.status_code, response.headers.items()
     return response.text, response.status_code, response.headers.items()
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
