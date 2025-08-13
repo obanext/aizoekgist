@@ -318,7 +318,7 @@ async function fetchAndShowDetailPage(ppn) {
                         <p>${summary}</p>
                         <div class="detail-buttons">
                             <button onclick="goBackToResults()">Terug</button>
-                            <button onclick="window.open('https://zoeken.oba.nl/resolve.ashx?index=ppn&identifiers=${ppn}', '_blank')">Meer informatie op OBA.nl</button>
+                            <button onclick="window.open('https://oba.nl/nl/collectie/oba-collectie?id=' + encodeURIComponent('|oba-catalogus|' + '${itemId}'), '_blank')">Meer informatie op OBA.nl</button>
                             <button onclick="window.open('https://iguana.oba.nl/iguana/www.main.cls?sUrl=search&theme=OBA#app=Reserve&ppn=${ppn}', '_blank')">Reserveer</button>
                         </div>
                     </div>
