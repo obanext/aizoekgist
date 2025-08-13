@@ -231,22 +231,82 @@ def fetch_event_detail(nativeid):
         logger.info(f"event_detail_response nativeid={nativeid} status={r.status_code}")
         if r.status_code != 200:
             return None
-        data = r.json()
-        record = data.get("record", {})
-        titles = record.get("titles") or []
-        summaries = record.get("summaries") or []
-        coverimages = record.get("coverimages") or []
-        title = titles[0] if isinstance(titles, list) and titles else record.get("titles", "Geen titel")
-        summary = summaries[0] if isinstance(summaries, list) and summaries else record.get("summaries", "")
-        cover = coverimages[0] if isinstance(coverimages, list) and coverimages else record.get("coverimages", "")
-        detail_link = record.get("detail-page") or "#"
-        custom = record.get("custom", {})
-        gebeurtenis = custom.get("gebeurtenis", {}) if isinstance(custom, dict) else {}
-        datum = gebeurtenis.get("datum", {}) if isinstance(gebeurtenis, dict) else {}
-        gebouw = gebeurtenis.get("gebouw", "") if isinstance(gebeurtenis, dict) else ""
-        locatienaam = gebeurtenis.get("locatienaam", "") if isinstance(gebeurtenis, dict) else ""
-        raw_start = datum.get("start", "") if isinstance(datum, dict) else ""
-        raw_end = datum.get("eind", "") if isinstance(datum, dict) else ""
+
+        ct = r.headers.get('Content-Type', '').lower()
+        title = ""
+        summary = ""
+        cover = ""
+        deeplink = ""
+        detail_page = ""
+        raw_start = ""
+        raw_end = ""
+        gebouw = ""
+        locatienaam = ""
+
+        if ct.startswith("application/json"):
+            data = r.json()
+            record = data.get("record", {})
+
+            titles = record.get("titles") or []
+            summaries = record.get("summaries") or []
+            coverimages = record.get("coverimages") or []
+            title = titles[0] if isinstance(titles, list) and titles else record.get("titles", "") or ""
+            summary = summaries[0] if isinstance(summaries, list) and summaries else record.get("summaries", "") or ""
+            cover = coverimages[0] if isinstance(coverimages, list) and coverimages else record.get("coverimages", "") or ""
+
+            detail_page = record.get("detail-page") or ""
+            custom = record.get("custom", {}) if isinstance(record.get("custom", {}), dict) else {}
+            evenement = custom.get("evenement", {}) if isinstance(custom.get("evenement", {}), dict) else {}
+            deeplink = evenement.get("deeplink") or evenement.get("url") or ""
+
+            gebeurtenis = custom.get("gebeurtenis", {}) if isinstance(custom.get("gebeurtenis", {}), dict) else {}
+            datum = gebeurtenis.get("datum", {}) if isinstance(gebeurtenis.get("datum", {}), dict) else {}
+            raw_start = datum.get("start", "") or ""
+            raw_end = datum.get("eind", "") or ""
+            gebouw = gebeurtenis.get("gebouw", "") or ""
+            locatienaam = gebeurtenis.get("locatienaam", "") or ""
+        else:
+            root = ET.fromstring(r.text)
+
+            t_node = root.find('.//titles/title')
+            title = (t_node.text or "").strip() if t_node is not None else ""
+
+            s_node = root.find('.//summaries/summary')
+            summary = (s_node.text or "").strip() if s_node is not None else ""
+
+            c_node = root.find('.//coverimages/coverimage')
+            cover = (c_node.text or "").strip() if c_node is not None else ""
+
+            dl_node = root.find('.//custom/evenement/deeplink')
+            if dl_node is not None and dl_node.text:
+                deeplink = dl_node.text.strip()
+            else:
+                er_node = root.find('.//eresources/eresource[@type="evenement"]')
+                deeplink = (er_node.get('url') or "").strip() if er_node is not None else ""
+
+            dp_node = root.find('.//detail-page')
+            detail_page = (dp_node.text or "").strip() if dp_node is not None else ""
+
+            d_node = root.find('.//custom/gebeurtenis/datum')
+            raw_start = d_node.get('start') if d_node is not None and d_node.get('start') else ""
+            raw_end = d_node.get('eind') if d_node is not None and d_node.get('eind') else ""
+
+            g_node = root.find('.//custom/gebeurtenis/gebouw')
+            l_node = root.find('.//custom/gebeurtenis/locatienaam')
+            gebouw = (g_node.text or "").strip() if g_node is not None else ""
+            locatienaam = (l_node.text or "").strip() if l_node is not None else ""
+
+            if not title:
+                ev_node = root.find('.//custom/evenement')
+                if ev_node is not None:
+                    title = ev_node.get('titel') or ev_node.get('title') or title
+                if not summary and ev_node is not None:
+                    summary = ev_node.get('omschrijving') or ev_node.get('intro') or summary
+                if not cover and ev_node is not None:
+                    cover = ev_node.get('afbeelding') or cover
+
+        link = deeplink or detail_page or ""
+
         date_str = ""
         time_str = ""
         if raw_start:
@@ -259,16 +319,17 @@ def fetch_event_detail(nativeid):
         if raw_end:
             try:
                 dt_end = datetime.fromisoformat(raw_end.replace("Z", "+00:00"))
-                time_str += " - " + dt_end.strftime("%H:%M")
+                time_str = f"{time_str} - {dt_end.strftime('%H:%M')}" if time_str else dt_end.strftime("%H:%M")
             except Exception:
                 pass
+
         location = f"{gebouw} - {locatienaam}".strip(" -")
-        has_title = bool(title)
-        logger.info(f"event_detail_parsed nativeid={nativeid} has_title={has_title}")
+
+        logger.info(f"event_detail_parsed nativeid={nativeid} has_title={bool(title)} has_link={bool(link)}")
         return {
             "title": title or "Geen titel",
             "cover": cover or "",
-            "link": detail_link or "#",
+            "link": link or "#",
             "summary": summary or "",
             "date": date_str,
             "time": time_str,
@@ -278,158 +339,6 @@ def fetch_event_detail(nativeid):
     except Exception:
         logger.exception(f"event_detail_error nativeid={nativeid}")
         return None
-
-def build_agenda_results_from_nativeids(nativeids):
-    results = []
-    for nid in nativeids:
-        detail = fetch_event_detail(nid)
-        if detail:
-            results.append(detail)
-    logger.info(f"agenda_build_from_nativeids count_in={len(nativeids)} count_out={len(results)}")
-    return results
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/start_thread', methods=['POST'])
-def start_thread():
-    try:
-        thread = openai.beta.threads.create()
-        logger.info(f"start_thread thread_id={thread.id}")
-        return jsonify({'thread_id': thread.id})
-    except Exception as e:
-        logger.exception("start_thread_error")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/send_message', methods=['POST'])
-def send_message():
-    try:
-        data = request.json
-        thread_id = data['thread_id']
-        user_input = data['user_input']
-        assistant_id = data['assistant_id']
-        logger.info(f"send_message_in thread_id={thread_id} assistant_id={assistant_id} text_len={len(user_input)}")
-
-        response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
-        search_query = extract_search_query(response_text)
-        comparison_query = extract_comparison_query(response_text)
-        agenda_query = extract_agenda_query(response_text)
-        logger.info(f"send_message_paths search={bool(search_query)} compare={bool(comparison_query)} agenda={bool(agenda_query)}")
-
-        if search_query:
-            response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
-            search_params = parse_assistant_message(response_text_2)
-            logger.info(f"search_params_present={bool(search_params)}")
-            if search_params:
-                coll = search_params.get("collection")
-                logger.info(f"collection={coll}")
-                if coll == "obadbevents13825":
-                    nativeids = perform_typesense_search_events(search_params)
-                    agenda_results = build_agenda_results_from_nativeids(nativeids)
-                    first_url = agenda_results[0]["link"] if agenda_results else ""
-                    logger.info(f"agenda_results_count={len(agenda_results)}")
-                    return jsonify({
-                        'response': {
-                            'type': 'agenda',
-                            'url': first_url,
-                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
-                            'results': agenda_results
-                        },
-                        'thread_id': thread_id
-                    })
-                return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
-            return jsonify({'response': response_text_2, 'thread_id': thread_id})
-
-        elif comparison_query:
-            response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
-            search_params = parse_assistant_message(response_text_3)
-            logger.info(f"compare_params_present={bool(search_params)}")
-            if search_params:
-                coll = search_params.get("collection")
-                logger.info(f"collection={coll}")
-                if coll == "obadbevents13825":
-                    nativeids = perform_typesense_search_events(search_params)
-                    agenda_results = build_agenda_results_from_nativeids(nativeids)
-                    first_url = agenda_results[0]["link"] if agenda_results else ""
-                    logger.info(f"agenda_results_count={len(agenda_results)}")
-                    return jsonify({
-                        'response': {
-                            'type': 'agenda',
-                            'url': first_url,
-                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
-                            'results': agenda_results
-                        },
-                        'thread_id': thread_id
-                    })
-                return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
-            return jsonify({'response': response_text_3, 'thread_id': thread_id})
-
-        elif agenda_query:
-            response_text_4, thread_id = call_assistant(assistant_id_4, agenda_query, thread_id)
-            try:
-                agenda_obj = json.loads(response_text_4)
-            except json.JSONDecodeError:
-                logger.warning("agenda_json_decode_error")
-                return jsonify({'response': response_text_4, 'thread_id': thread_id})
-
-            logger.info(f"agenda_detect keys={list(agenda_obj.keys())}")
-
-            if "API" in agenda_obj and "URL" in agenda_obj:
-                logger.info("agenda_path=A")
-                results = fetch_agenda_results(agenda_obj["API"])
-                return jsonify({
-                    'response': {
-                        'type': 'agenda',
-                        'url': agenda_obj.get("URL", ""),
-                        'message': agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
-                        'results': results
-                    },
-                    'thread_id': thread_id
-                })
-
-            if "q" in agenda_obj and "collection" in agenda_obj:
-                logger.info("agenda_path=B")
-                params = {
-                    "q": agenda_obj.get("q", ""),
-                    "collection": agenda_obj.get("collection", ""),
-                    "query_by": agenda_obj.get("query_by", "embedding"),
-                    "vector_query": agenda_obj.get("vector_query", "embedding:([], alpha: 0.8)"),
-                    "filter_by": agenda_obj.get("filter_by", "")
-                }
-                if params["collection"] == "obadbevents13825":
-                    nativeids = perform_typesense_search_events(params)
-                    agenda_results = build_agenda_results_from_nativeids(nativeids)
-                    first_url = agenda_results[0]["link"] if agenda_results else ""
-                    return jsonify({
-                        'response': {
-                            'type': 'agenda',
-                            'url': first_url,
-                            'message': agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
-                            'results': agenda_results
-                        },
-                        'thread_id': thread_id
-                    })
-                logger.info("agenda_b_not_events_collection")
-                return jsonify({
-                    'response': {
-                        'type': 'agenda',
-                        'url': "",
-                        'message': "Geen events-collectie gevonden.",
-                        'results': []
-                    },
-                    'thread_id': thread_id
-                })
-
-            logger.warning("agenda_unknown_format")
-            return jsonify({'response': response_text_4, 'thread_id': thread_id})
-
-        logger.info("send_message_fallback_text")
-        return jsonify({'response': response_text, 'thread_id': thread_id})
-
-    except Exception as e:
-        logger.exception("send_message_error")
-        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/apply_filters', methods=['POST'])
