@@ -1,42 +1,30 @@
+/*
+  Nexi Cat Chat — Frontend (JS)
+  Doel:
+  - Besturen van chat, zoeken, resultaten tonen, filters toepassen
+  - Mobiele UI: panelen voor resultaten en filters (open/sluit + swipe + history)
+  - Badge op result-knop die tijdelijk vergroot wordt bij nieuwe resultaten
+*/
+
 let thread_id = null;
 let timeoutHandle = null;
 let previousResults = [];
 let linkedPPNs = new Set();
 
 /* ===== Mobiele helpers: panel state, overlay, history ===== */
-function lockBodyScroll(lock) {
-    if (lock) {
-        document.body.classList.add('panel-open');
-        setAriaHidden(true);
-    } else {
-        document.body.classList.remove('panel-open');
-        setAriaHidden(false);
-    }
-}
-function setAriaHidden(isOpen) {
-    // Wanneer een paneel open is, markeer beide panelen als modal (aria-hidden=false) en chat als inert via aria-hidden
-    const chat = document.getElementById('chat-section');
-    const res = document.getElementById('result-section');
-    const fil = document.getElementById('filter-section');
-    const anyOpen = res.classList.contains('open') || fil.classList.contains('open');
-    chat.setAttribute('aria-hidden', anyOpen ? 'true' : 'false');
-    res.setAttribute('aria-hidden', res.classList.contains('open') ? 'false' : 'true');
-    fil.setAttribute('aria-hidden', fil.classList.contains('open') ? 'false' : 'true');
-}
-
 function openFilterPanel(pushHistory = true) {
     const panel = document.getElementById('filter-section');
     const other = document.getElementById('result-section');
     other.classList.remove('open');
     panel.classList.add('open');
-    lockBodyScroll(true);
+    document.body.classList.add('panel-open');
     if (pushHistory) history.pushState({ panel: 'filters' }, '', '#filters');
 }
 function closeFilterPanel(useHistoryBack = false) {
     const panel = document.getElementById('filter-section');
     panel.classList.remove('open');
     if (!document.getElementById('result-section').classList.contains('open')) {
-        lockBodyScroll(false);
+        document.body.classList.remove('panel-open');
     }
     if (useHistoryBack && history.state && history.state.panel === 'filters') {
         history.back();
@@ -47,14 +35,14 @@ function openResultPanel(pushHistory = true) {
     const other = document.getElementById('filter-section');
     other.classList.remove('open');
     panel.classList.add('open');
-    lockBodyScroll(true);
+    document.body.classList.add('panel-open');
     if (pushHistory) history.pushState({ panel: 'results' }, '', '#results');
 }
 function closeResultPanel(useHistoryBack = false) {
     const panel = document.getElementById('result-section');
     panel.classList.remove('open');
     if (!document.getElementById('filter-section').classList.contains('open')) {
-        lockBodyScroll(false);
+        document.body.classList.remove('panel-open');
     }
     if (useHistoryBack && history.state && history.state.panel === 'results') {
         history.back();
@@ -66,14 +54,12 @@ function closeAnyPanel() {
     closeFilterPanel();
     closeResultPanel();
     if (hasOpen && history.state && history.state.panel) {
-        // Ga terug naar chat state
         history.back();
     }
 }
 
 /* History: initial state + popstate handler */
 (function initHistory() {
-    // Alleen aanroepen na DOM load (window.onload zet nogmaals baseline)
     if (!history.state) {
         history.replaceState({ panel: 'chat' }, '', location.pathname);
     }
@@ -88,7 +74,7 @@ function closeAnyPanel() {
         } else {
             closeFilterPanel();
             closeResultPanel();
-            lockBodyScroll(false);
+            document.body.classList.remove('panel-open');
         }
     });
 })();
@@ -97,7 +83,7 @@ function closeAnyPanel() {
 let touchStartX = 0;
 let touchStartY = 0;
 let touchActivePanel = null;
-const EDGE_GUTTER = 24;   // px van schermrand
+const EDGE_GUTTER = 24;
 const SWIPE_THRESH_X = 60;
 const SWIPE_MAX_Y = 50;
 
@@ -126,19 +112,10 @@ function onTouchEnd(e) {
     const nearLeftEdge = touchStartX <= EDGE_GUTTER;
     const nearRightEdge = touchStartX >= (vw - EDGE_GUTTER);
 
-    // Alleen horizontale swipes
     if (absX < SWIPE_THRESH_X || absY > SWIPE_MAX_Y) {
         touchStartX = touchStartY = 0;
         return;
     }
-
-    // Logica:
-    // - Vanuit chat:
-    //   * swipe L->R (dx>0) vanaf linker rand => open resultaten
-    //   * swipe R->L (dx<0) vanaf rechter rand => open filters
-    // - Paneel open:
-    //   * results open + R->L (dx<0) => sluit results
-    //   * filters open + L->R (dx>0) => sluit filters
 
     if (touchActivePanel === 'chat') {
         if (dx > 0 && nearLeftEdge) {
@@ -161,8 +138,7 @@ function onTouchEnd(e) {
 document.addEventListener('touchstart', onTouchStart, { passive: true });
 document.addEventListener('touchend', onTouchEnd, { passive: true });
 
-/* ===== Bestaande functionaliteit hieronder ongewijzigd, tenzij expliciet hook ===== */
-
+/* ===== Functionaliteit chat en zoekresultaten ===== */
 function checkInput() {
     const userInput = document.getElementById('user-input').value.trim();
     const sendButton = document.getElementById('send-button');
@@ -170,32 +146,18 @@ function checkInput() {
     const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
     let anyChecked = Array.from(checkboxes).some(checkbox => checkbox.checked);
 
-    if (userInput === "") {
-        sendButton.disabled = true;
-        sendButton.style.backgroundColor = "#ccc";
-        sendButton.style.cursor = "not-allowed";
-    } else {
-        sendButton.disabled = false;
-        sendButton.style.backgroundColor = "#6d5ab0";
-        sendButton.style.cursor = "pointer";
-    }
+    sendButton.disabled = userInput === "";
+    sendButton.style.backgroundColor = userInput === "" ? "#ccc" : "#6d5ab0";
+    sendButton.style.cursor = userInput === "" ? "not-allowed" : "pointer";
 
-    if (!anyChecked) {
-        applyFiltersButton.disabled = true;
-        applyFiltersButton.style.backgroundColor = "#ccc";
-        applyFiltersButton.style.cursor = "not-allowed";
-    } else {
-        applyFiltersButton.disabled = false;
-        applyFiltersButton.style.backgroundColor = "#6d5ab0";
-        applyFiltersButton.style.cursor = "pointer";
-    }
+    applyFiltersButton.disabled = !anyChecked;
+    applyFiltersButton.style.backgroundColor = anyChecked ? "#6d5ab0" : "#ccc";
+    applyFiltersButton.style.cursor = anyChecked ? "pointer" : "not-allowed";
 }
 
 async function startThread() {
-    console.debug('[startThread] POST /start_thread');
     const response = await fetch('/start_thread', { method: 'POST' });
     const data = await response.json();
-    console.debug('[startThread] response', data);
     thread_id = data.thread_id;
 }
 
@@ -206,11 +168,8 @@ async function sendMessage() {
     displayUserMessage(userInput);
     showLoader();
 
-    const sendButton = document.getElementById('send-button');
     document.getElementById('user-input').value = '';
-    sendButton.disabled = true;
-    sendButton.style.backgroundColor = "#ccc";
-    sendButton.style.cursor = "not-allowed";
+    checkInput();
 
     document.getElementById('search-results').style.display = 'grid';
     document.getElementById('detail-container').style.display = 'none';
@@ -219,7 +178,6 @@ async function sendMessage() {
     timeoutHandle = setTimeout(() => { showErrorMessage(); }, 30000);
 
     try {
-        console.debug('[sendMessage] POST /send_message payload', { thread_id, user_input: userInput });
         const response = await fetch('/send_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -229,15 +187,11 @@ async function sendMessage() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
-        console.debug('[sendMessage] status', response.status);
         if (!response.ok) {
-            const errorData = await response.json();
-            console.debug('[sendMessage] error body', errorData);
             showErrorMessage();
             return;
         }
         const data = await response.json();
-        console.debug('[sendMessage] data', data);
         hideLoader();
         clearTimeout(timeoutHandle);
 
@@ -270,7 +224,6 @@ async function sendMessage() {
 
         resetFilters();
     } catch (error) {
-        console.debug('[sendMessage] exception', error);
         showErrorMessage();
     }
 
@@ -293,7 +246,6 @@ function resetThread() {
 
 async function sendStatusKlaar() {
     try {
-        console.debug('[sendStatusKlaar] POST /send_message payload', { thread_id, user_input: 'STATUS : KLAAR' });
         const response = await fetch('/send_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -303,19 +255,10 @@ async function sendStatusKlaar() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
-        console.debug('[sendStatusKlaar] status', response.status);
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.debug('[sendStatusKlaar] error body', errorData);
-            return;
-        }
         const data = await response.json();
-        console.debug('[sendStatusKlaar] data', data);
         displayAssistantMessage(data.response);
         scrollToBottom();
-    } catch (error) {
-        console.debug('[sendStatusKlaar] exception', error);
-    }
+    } catch (error) {}
 }
 
 function displayUserMessage(message) {
@@ -364,62 +307,63 @@ function displaySearchResults(results) {
 }
 
 function displayAgendaResults(results) {
-  const searchResultsContainer = document.getElementById('search-results');
-  searchResultsContainer.innerHTML = '';
-  searchResultsContainer.classList.remove('book-grid');
-  searchResultsContainer.classList.add('agenda-list');
+    const searchResultsContainer = document.getElementById('search-results');
+    searchResultsContainer.innerHTML = '';
+    searchResultsContainer.classList.remove('book-grid');
+    searchResultsContainer.classList.add('agenda-list');
 
-  const maxItems = 5;
-  const limitedResults = results.slice(0, maxItems);
+    const maxItems = 5;
+    const limitedResults = results.slice(0, maxItems);
 
-  limitedResults.forEach(result => {
-    let formattedDate = result.date || 'Datum niet beschikbaar';
-    let formattedTime = result.time || '';
+    limitedResults.forEach(result => {
+        let formattedDate = result.date || 'Datum niet beschikbaar';
+        let formattedTime = result.time || '';
 
-    if ((!formattedDate || !formattedTime) && result.raw_date && result.raw_date.start) {
-      const startDate = new Date(result.raw_date.start);
-      formattedDate = formattedDate || startDate.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      formattedTime = formattedTime || startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        if ((!formattedDate || !formattedTime) && result.raw_date && result.raw_date.start) {
+            const startDate = new Date(result.raw_date.start);
+            formattedDate = formattedDate || startDate.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            formattedTime = formattedTime || startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        }
+        if ((!formattedTime) && result.raw_date && result.raw_date.end) {
+            const endDate = new Date(result.raw_date.end);
+            formattedTime = (formattedTime ? (formattedTime + ' - ') : '') + endDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        const location = result.location || 'Locatie niet beschikbaar';
+        const title = result.title || 'Geen titel beschikbaar';
+        const summary = result.summary || 'Geen beschrijving beschikbaar';
+        const coverImage = result.cover || '';
+        const link = result.link || '#';
+
+        const el = document.createElement('div');
+        el.classList.add('agenda-card');
+        el.innerHTML = `
+            <a href="${link}" target="_blank" class="agenda-card-link">
+                <img src="${coverImage}" alt="Agenda cover" class="agenda-card-image">
+                <div class="agenda-card-text">
+                    <div class="agenda-date">${formattedDate}</div>
+                    <div class="agenda-time">${formattedTime}</div>
+                    <div class="agenda-title">${title}</div>
+                    <div class="agenda-location">${location}</div>
+                    <div class="agenda-summary">${summary}</div>
+                </div>
+            </a>
+        `;
+        searchResultsContainer.appendChild(el);
+    });
+
+    if (results.length > maxItems) {
+        const moreButton = document.createElement('button');
+        moreButton.classList.add('more-button');
+        moreButton.innerHTML = 'Meer';
+        moreButton.onclick = () => {
+            const url = results[0].link || '#';
+            window.open(url, '_blank');
+        };
+        searchResultsContainer.appendChild(moreButton);
     }
-    if ((!formattedTime) && result.raw_date && result.raw_date.end) {
-      const endDate = new Date(result.raw_date.end);
-      formattedTime = (formattedTime ? (formattedTime + ' - ') : '') + endDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-    }
 
-    const location = result.location || 'Locatie niet beschikbaar';
-    const title = result.title || 'Geen titel beschikbaar';
-    const summary = result.summary || 'Geen beschrijving beschikbaar';
-    const coverImage = result.cover || '';
-    const link = result.link || '#';
-
-    const el = document.createElement('div');
-    el.classList.add('agenda-card');
-    el.innerHTML = `
-      <a href="${link}" target="_blank" class="agenda-card-link">
-        <img src="${coverImage}" alt="Agenda cover" class="agenda-card-image">
-        <div class="agenda-card-text">
-          <div class="agenda-date">${formattedDate}</div>
-          <div class="agenda-time">${formattedTime}</div>
-          <div class="agenda-title">${title}</div>
-          <div class="agenda-location">${location}</div>
-          <div class="agenda-summary">${summary}</div>
-        </div>
-      </a>
-    `;
-    searchResultsContainer.appendChild(el);
-  });
-
-  if (results.length > maxItems) {
-    const moreButton = document.createElement('button');
-    moreButton.classList.add('more-button');
-    moreButton.innerHTML = 'Meer';
-    moreButton.onclick = () => {
-      const url = results[0].link || '#';
-      window.open(url, '_blank');
-    };
-    searchResultsContainer.appendChild(moreButton);
-  }
-  updateResultsBadge(results.length);
+    updateResultsBadge(results.length);
 }
 
 function updateResultsBadge(count) {
@@ -456,7 +400,6 @@ function showAgendaDetail(result) {
 
 async function fetchAndShowDetailPage(ppn) {
     try {
-        console.debug('[fetchAndShowDetailPage] resolver start', { ppn });
         const resolverResponse = await fetch(`/proxy/resolver?ppn=${ppn}`);
         const resolverText = await resolverResponse.text();
         const parser = new DOMParser();
@@ -466,7 +409,6 @@ async function fetchAndShowDetailPage(ppn) {
             throw new Error('Item ID not found in resolver response.');
         }
         const itemId = itemIdElement.textContent.split('|')[2];
-        console.debug('[fetchAndShowDetailPage] itemId', itemId);
 
         const detailResponse = await fetch(`/proxy/details?item_id=${itemId}`);
         const contentType = detailResponse.headers.get("content-type");
@@ -505,12 +447,9 @@ async function fetchAndShowDetailPage(ppn) {
                 sendDetailPageLinkToUser(title, currentUrl, ppn);
             }
         } else {
-            const errorText = await detailResponse.text();
-            console.debug('[fetchAndShowDetailPage] non-json', errorText);
-            throw new Error(`Unexpected response content type: ${errorText}`);
+            throw new Error('Unexpected response content type');
         }
     } catch (error) {
-        console.debug('[fetchAndShowDetailPage] exception', error);
         displayAssistantMessage('Er is iets misgegaan bij het ophalen van de detailpagina.');
     }
 }
@@ -550,7 +489,6 @@ async function applyFiltersAndSend() {
     document.getElementById('breadcrumbs').innerHTML = '';
 
     try {
-        console.debug('[applyFiltersAndSend] POST /apply_filters payload', { thread_id, filter_values: filterString });
         const response = await fetch('/apply_filters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -560,17 +498,13 @@ async function applyFiltersAndSend() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
-        console.debug('[applyFiltersAndSend] status', response.status);
 
         if (!response.ok) {
-            const errorData = await response.json();
-            console.debug('[applyFiltersAndSend] error body', errorData);
             hideLoader();
             return;
         }
 
         const data = await response.json();
-        console.debug('[applyFiltersAndSend] data', data);
         hideLoader();
 
         if (data.response && data.response.type === 'agenda') {
@@ -587,12 +521,9 @@ async function applyFiltersAndSend() {
             thread_id = data.thread_id;
         }
 
-        // Mobiel: filterpaneel sluiten na toepassen
         closeFilterPanel(true);
-
         resetFilters();
     } catch (error) {
-        console.debug('[applyFiltersAndSend] exception', error);
         hideLoader();
     }
 
@@ -630,7 +561,6 @@ async function startHelpThread() {
 async function sendHelpMessage(message) {
     showLoader();
     try {
-        console.debug('[sendHelpMessage] POST /send_message payload', { thread_id, message });
         const response = await fetch('/send_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -640,18 +570,15 @@ async function sendHelpMessage(message) {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
-        console.debug('[sendHelpMessage] status', response.status);
         if (!response.ok) {
             throw new Error('Het verzenden van het help-bericht is mislukt.');
         }
         const data = await response.json();
-        console.debug('[sendHelpMessage] data', data);
         hideLoader();
         if (data.response) {
             displayAssistantMessage(data.response);
         }
     } catch (error) {
-        console.debug('[sendHelpMessage] exception', error);
         hideLoader();
         displayAssistantMessage('Er is iets misgegaan. Probeer opnieuw.');
     }
@@ -753,10 +680,7 @@ window.onload = async () => {
     if (applyFiltersButton) applyFiltersButton.onclick = applyFiltersAndSend;
     resetFilters();
     linkedPPNs.clear();
-
-    // Panelen dicht + history baseline
     closeFilterPanel();
     closeResultPanel();
     if (!history.state) history.replaceState({ panel: 'chat' }, '', location.pathname);
-    setAriaHidden(false);
 };
