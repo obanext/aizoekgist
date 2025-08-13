@@ -83,7 +83,8 @@ def fetch_agenda_results(api_url):
         for result in result_nodes.findall('result'):
             title = result.findtext('.//titles/title') or "Geen titel"
             cover = result.findtext('.//coverimages/coverimage') or ""
-            link = result.findtext('.//detail-page') or "#"
+            ldeeplink_node = result.find('.//custom/evenement/deeplink')
+            link = (deeplink_node.text.strip() if deeplink_node is not None and deeplink_node.text else "") or "#"
             summary = result.findtext('.//summaries/summary') or ""
             datum_node = result.find('.//custom/gebeurtenis/datum')
             datum_start = datum_node.get('start') if datum_node is not None else None
