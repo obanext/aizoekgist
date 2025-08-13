@@ -32,14 +32,15 @@ function checkInput() {
 }
 
 async function startThread() {
+    console.debug('[startThread] POST /start_thread');
     const response = await fetch('/start_thread', { method: 'POST' });
     const data = await response.json();
+    console.debug('[startThread] response', data);
     thread_id = data.thread_id;
 }
 
 async function sendMessage() {
     const userInput = document.getElementById('user-input').value.trim();
-
     if (userInput === "") {
         return;
     }
@@ -62,6 +63,7 @@ async function sendMessage() {
     }, 30000);
 
     try {
+        console.debug('[sendMessage] POST /send_message payload', { thread_id, user_input: userInput });
         const response = await fetch('/send_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -71,13 +73,15 @@ async function sendMessage() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
+        console.debug('[sendMessage] status', response.status);
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Error:', errorData.error);
+            console.debug('[sendMessage] error body', errorData);
             showErrorMessage();
             return;
         }
         const data = await response.json();
+        console.debug('[sendMessage] data', data);
         hideLoader();
         clearTimeout(timeoutHandle);
 
@@ -88,14 +92,13 @@ async function sendMessage() {
             if (data.response.message) {
                 displayAssistantMessage(data.response.message);
             }
-            previousResults = data.response.results;
-            console.log("[DEBUG] Agenda results:", data.response.results);
-            displayAgendaResults(data.response.results);
+            previousResults = data.response.results || [];
+            displayAgendaResults(previousResults);
             await sendStatusKlaar();
             return;
         }
 
-        if (!data.response.results) {
+        if (!data.response?.results) {
             displayAssistantMessage(data.response);
         }
 
@@ -103,15 +106,15 @@ async function sendMessage() {
             thread_id = data.thread_id;
         }
 
-        if (data.response.results) {
+        if (data.response?.results) {
             previousResults = data.response.results;
-            displaySearchResults(data.response.results);
+            displaySearchResults(previousResults);
             await sendStatusKlaar();
         }
 
         resetFilters();
     } catch (error) {
-        console.error('Unexpected error:', error);
+        console.debug('[sendMessage] exception', error);
         showErrorMessage();
     }
 
@@ -128,13 +131,13 @@ function resetThread() {
     addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
-
     resetFilters();
     linkedPPNs.clear();
 }
 
 async function sendStatusKlaar() {
     try {
+        console.debug('[sendStatusKlaar] POST /send_message payload', { thread_id, user_input: 'STATUS : KLAAR' });
         const response = await fetch('/send_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -144,16 +147,18 @@ async function sendStatusKlaar() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
+        console.debug('[sendStatusKlaar] status', response.status);
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Error:', errorData.error);
+            console.debug('[sendStatusKlaar] error body', errorData);
             return;
         }
         const data = await response.json();
+        console.debug('[sendStatusKlaar] data', data);
         displayAssistantMessage(data.response);
         scrollToBottom();
     } catch (error) {
-        console.error('Unexpected error:', error);
+        console.debug('[sendStatusKlaar] exception', error);
     }
 }
 
@@ -279,6 +284,7 @@ function showAgendaDetail(result) {
 
 async function fetchAndShowDetailPage(ppn) {
     try {
+        console.debug('[fetchAndShowDetailPage] resolver start', { ppn });
         const resolverResponse = await fetch(`/proxy/resolver?ppn=${ppn}`);
         const resolverText = await resolverResponse.text();
         const parser = new DOMParser();
@@ -288,6 +294,7 @@ async function fetchAndShowDetailPage(ppn) {
             throw new Error('Item ID not found in resolver response.');
         }
         const itemId = itemIdElement.textContent.split('|')[2];
+        console.debug('[fetchAndShowDetailPage] itemId', itemId);
 
         const detailResponse = await fetch(`/proxy/details?item_id=${itemId}`);
         const contentType = detailResponse.headers.get("content-type");
@@ -327,10 +334,11 @@ async function fetchAndShowDetailPage(ppn) {
             }
         } else {
             const errorText = await detailResponse.text();
+            console.debug('[fetchAndShowDetailPage] non-json', errorText);
             throw new Error(`Unexpected response content type: ${errorText}`);
         }
     } catch (error) {
-        console.error('Error fetching detail page:', error);
+        console.debug('[fetchAndShowDetailPage] exception', error);
         displayAssistantMessage('😿 Er is iets misgegaan bij het ophalen van de detailpagina.');
     }
 }
@@ -338,7 +346,6 @@ async function fetchAndShowDetailPage(ppn) {
 function goBackToResults() {
     const detailContainer = document.getElementById('detail-container');
     const searchResultsContainer = document.getElementById('search-results');
-    
     detailContainer.style.display = 'none';
     searchResultsContainer.style.display = 'grid';
     displaySearchResults(previousResults);
@@ -361,7 +368,6 @@ async function applyFiltersAndSend() {
         }
     });
     const filterString = selectedFilters.join('||');
-
     if (filterString === "") {
         return;
     }
@@ -374,6 +380,7 @@ async function applyFiltersAndSend() {
     document.getElementById('breadcrumbs').innerHTML = '';
 
     try {
+        console.debug('[applyFiltersAndSend] POST /apply_filters payload', { thread_id, filter_values: filterString });
         const response = await fetch('/apply_filters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -383,20 +390,26 @@ async function applyFiltersAndSend() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
+        console.debug('[applyFiltersAndSend] status', response.status);
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Error:', errorData.error);
+            console.debug('[applyFiltersAndSend] error body', errorData);
             hideLoader();
             return;
         }
 
         const data = await response.json();
+        console.debug('[applyFiltersAndSend] data', data);
         hideLoader();
 
-        if (data.results) {
+        if (data.response && data.response.type === 'agenda') {
+            previousResults = data.response.results || [];
+            displayAgendaResults(previousResults);
+            await sendStatusKlaar();
+        } else if (data.results) {
             previousResults = data.results;
-            displaySearchResults(data.results);
+            displaySearchResults(previousResults);
             await sendStatusKlaar();
         }
 
@@ -406,7 +419,7 @@ async function applyFiltersAndSend() {
         
         resetFilters();
     } catch (error) {
-        console.error('Unexpected error:', error);
+        console.debug('[applyFiltersAndSend] exception', error);
         hideLoader();
     }
 
@@ -423,7 +436,6 @@ function startNewChat() {
     addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
-    
     resetFilters();
     linkedPPNs.clear();
 }
@@ -444,8 +456,8 @@ async function startHelpThread() {
 
 async function sendHelpMessage(message) {
     showLoader();
-
     try {
+        console.debug('[sendHelpMessage] POST /send_message payload', { thread_id, message });
         const response = await fetch('/send_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -455,20 +467,18 @@ async function sendHelpMessage(message) {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
-
+        console.debug('[sendHelpMessage] status', response.status);
         if (!response.ok) {
             throw new Error('Het verzenden van het help-bericht is mislukt.');
         }
-
         const data = await response.json();
+        console.debug('[sendHelpMessage] data', data);
         hideLoader();
-
         if (data.response) {
             displayAssistantMessage(data.response);
         }
-
     } catch (error) {
-        console.error('Error tijdens het verzenden van het help-bericht:', error);
+        console.debug('[sendHelpMessage] exception', error);
         hideLoader();
         displayAssistantMessage('😿 Er is iets misgegaan. Probeer opnieuw.');
     }
@@ -505,7 +515,6 @@ function hideLoader() {
     if (loaderElement) {
         loaderElement.remove();
     }
-
     const sendButton = document.getElementById('send-button');
     sendButton.disabled = false;
     sendButton.style.backgroundColor = "#6d5ab0";
@@ -542,7 +551,6 @@ function showErrorMessage() {
     hideLoader();
     clearTimeout(timeoutHandle);
     resetThread();
-
     setTimeout(() => {
         clearErrorMessage();
     }, 2000);
@@ -551,7 +559,6 @@ function showErrorMessage() {
 function clearErrorMessage() {
     const messageContainer = document.getElementById('messages');
     const lastMessage = messageContainer.lastChild;
-
     if (lastMessage && lastMessage.textContent.includes('er is iets misgegaan')) {
         messageContainer.removeChild(lastMessage);
     }
@@ -578,12 +585,10 @@ window.onload = async () => {
     addPlaceholders();
     checkInput();
     document.getElementById('user-input').placeholder = "Vertel me wat je zoekt!";
-
     const applyFiltersButton = document.querySelector('button[onclick="applyFiltersAndSend()"]');
     if (applyFiltersButton) {
         applyFiltersButton.onclick = applyFiltersAndSend;
     }
-
     resetFilters();
     linkedPPNs.clear();
 };
