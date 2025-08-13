@@ -42,7 +42,6 @@ def fetch_agenda_results(api_url):
     try:
         if "authorization=" not in api_url:
             api_url += f"&authorization={oba_api_key}"
-        print(f"[DEBUG] agenda API URL: {api_url}")
         response = requests.get(api_url)
         response.raise_for_status()
         root = ET.fromstring(response.text)
@@ -50,7 +49,6 @@ def fetch_agenda_results(api_url):
         results = []
         result_nodes = root.find('results')
         if result_nodes is None:
-            print("[DEBUG] No <results> element found in XML")
             return []
 
         for result in result_nodes.findall('result'):
@@ -59,16 +57,15 @@ def fetch_agenda_results(api_url):
             link = result.findtext('.//detail-page') or "#"
             summary = result.findtext('.//summaries/summary') or ""
 
-            datum_start = result.find('.//custom/gebeurtenis/datum').get('start') if result.find('.//custom/gebeurtenis/datum') is not None else None
-            datum_eind = result.find('.//custom/gebeurtenis/datum').get('eind') if result.find('.//custom/gebeurtenis/datum') is not None else None
+            datum_node = result.find('.//custom/gebeurtenis/datum')
+            datum_start = datum_node.get('start') if datum_node is not None else None
+            datum_eind = datum_node.get('eind') if datum_node is not None else None
             gebouw = result.findtext('.//custom/gebeurtenis/gebouw') or ""
             locatienaam = result.findtext('.//custom/gebeurtenis/locatienaam') or ""
 
-            # Ruwe datum/tijd
             raw_start = datum_start or ""
             raw_end = datum_eind or ""
 
-            # Geformatteerde strings
             date_str = ""
             time_str = ""
 
@@ -77,15 +74,15 @@ def fetch_agenda_results(api_url):
                     dt_start = datetime.fromisoformat(raw_start.replace("Z", "+00:00"))
                     date_str = dt_start.strftime("%A %d %B %Y")
                     time_str = dt_start.strftime("%H:%M")
-                except Exception as e:
-                    print("Startdatum parsefout:", e)
+                except Exception:
+                    pass
 
             if raw_end:
                 try:
                     dt_end = datetime.fromisoformat(raw_end.replace("Z", "+00:00"))
                     time_str += " - " + dt_end.strftime("%H:%M")
-                except Exception as e:
-                    print("Einddatum parsefout:", e)
+                except Exception:
+                    pass
 
             location = f"{gebouw} - {locatienaam}".strip(" -")
 
@@ -94,21 +91,18 @@ def fetch_agenda_results(api_url):
                 "cover": cover,
                 "link": link,
                 "summary": summary,
-                "date": date_str,     # geformatteerd
-                "time": time_str,     # geformatteerd
+                "date": date_str,
+                "time": time_str,
                 "location": location,
-                "raw_date": {         # nieuwe velden voor frontend
+                "raw_date": {
                     "start": raw_start,
                     "end": raw_end
                 }
             })
 
         return results
-    except Exception as e:
-        print(f"Agenda API error: {e}")
+    except Exception:
         return []
-
-
 
 class CustomEventHandler(openai.AssistantEventHandler):
     def __init__(self):
@@ -177,14 +171,103 @@ def perform_typesense_search(params):
             "include_fields": "short_title,ppn",
             "per_page": 15,
             "filter_by": params["filter_by"]
-        }]
-    }
+        }]}
     response = requests.post(typesense_api_url, headers=headers, json=body)
     if response.status_code == 200:
         hits = response.json()["results"][0]["hits"]
         return {"results": [{"ppn": h["document"]["ppn"], "short_title": h["document"]["short_title"]} for h in hits]}
     else:
         return {"error": response.status_code, "message": response.text}
+
+def perform_typesense_search_events(params):
+    headers = {
+        'Content-Type': 'application/json',
+        'X-TYPESENSE-API-KEY': typesense_api_key,
+    }
+    body = {
+        "searches": [{
+            "q": params["q"],
+            "query_by": params["query_by"],
+            "collection": params["collection"],
+            "prefix": "false",
+            "vector_query": params["vector_query"],
+            "include_fields": "nativeid",
+            "per_page": 15,
+            "filter_by": params["filter_by"]
+        }]}
+    response = requests.post(typesense_api_url, headers=headers, json=body)
+    if response.status_code == 200:
+        hits = response.json()["results"][0]["hits"]
+        return [h["document"]["nativeid"] for h in hits if "nativeid" in h["document"]]
+    else:
+        return []
+
+def fetch_event_detail(nativeid):
+    try:
+        url = f'https://zoeken.oba.nl/api/v1/details/?id=|evenementen|{nativeid}&authorization={oba_api_key}&output=json'
+        r = requests.get(url, timeout=10)
+        if r.status_code != 200:
+            return None
+        data = r.json()
+
+        record = data.get("record", {})
+
+        title = (record.get("titles") or ["Geen titel"])[0] if isinstance(record.get("titles"), list) else record.get("titles", "Geen titel")
+        summary = (record.get("summaries") or [""])[0] if isinstance(record.get("summaries"), list) else record.get("summaries", "")
+        cover = (record.get("coverimages") or [""])[0] if isinstance(record.get("coverimages"), list) else record.get("coverimages", "")
+
+        detail_link = record.get("detail-page") or "#"
+
+        custom = record.get("custom", {})
+        gebeurtenis = custom.get("gebeurtenis", {}) if isinstance(custom, dict) else {}
+        datum = gebeurtenis.get("datum", {}) if isinstance(gebeurtenis, dict) else {}
+        gebouw = gebeurtenis.get("gebouw", "") if isinstance(gebeurtenis, dict) else ""
+        locatienaam = gebeurtenis.get("locatienaam", "") if isinstance(gebeurtenis, dict) else ""
+
+        raw_start = datum.get("start", "") if isinstance(datum, dict) else ""
+        raw_end = datum.get("eind", "") if isinstance(datum, dict) else ""
+
+        date_str = ""
+        time_str = ""
+        if raw_start:
+            try:
+                dt_start = datetime.fromisoformat(raw_start.replace("Z", "+00:00"))
+                date_str = dt_start.strftime("%A %d %B %Y")
+                time_str = dt_start.strftime("%H:%M")
+            except Exception:
+                pass
+        if raw_end:
+            try:
+                dt_end = datetime.fromisoformat(raw_end.replace("Z", "+00:00"))
+                time_str += " - " + dt_end.strftime("%H:%M")
+            except Exception:
+                pass
+
+        location = f"{gebouw} - {locatienaam}".strip(" -")
+
+        return {
+            "title": title or "Geen titel",
+            "cover": cover or "",
+            "link": detail_link or "#",
+            "summary": summary or "",
+            "date": date_str,
+            "time": time_str,
+            "location": location,
+            "raw_date": {
+                "start": raw_start,
+                "end": raw_end
+            }
+        }
+    except Exception:
+        return None
+
+def build_agenda_results_from_nativeids(nativeids):
+    results = []
+    for nid in nativeids:
+        detail = fetch_event_detail(nid)
+        if detail:
+            results.append(detail)
+    return results
 
 @app.route('/')
 def index():
@@ -215,6 +298,19 @@ def send_message():
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
             search_params = parse_assistant_message(response_text_2)
             if search_params:
+                if search_params.get("collection") == "obadb30725events":
+                    nativeids = perform_typesense_search_events(search_params)
+                    agenda_results = build_agenda_results_from_nativeids(nativeids)
+                    first_url = agenda_results[0]["link"] if agenda_results else ""
+                    return jsonify({
+                        'response': {
+                            'type': 'agenda',
+                            'url': first_url,
+                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                            'results': agenda_results
+                        },
+                        'thread_id': thread_id
+                    })
                 return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
             return jsonify({'response': response_text_2, 'thread_id': thread_id})
 
@@ -222,6 +318,19 @@ def send_message():
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
             if search_params:
+                if search_params.get("collection") == "obadb30725events":
+                    nativeids = perform_typesense_search_events(search_params)
+                    agenda_results = build_agenda_results_from_nativeids(nativeids)
+                    first_url = agenda_results[0]["link"] if agenda_results else ""
+                    return jsonify({
+                        'response': {
+                            'type': 'agenda',
+                            'url': first_url,
+                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                            'results': agenda_results
+                        },
+                        'thread_id': thread_id
+                    })
                 return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
             return jsonify({'response': response_text_3, 'thread_id': thread_id})
 
@@ -263,6 +372,10 @@ def apply_filters():
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
             search_params = parse_assistant_message(response_text_2)
             if search_params:
+                if search_params.get("collection") == "obadb30725events":
+                    nativeids = perform_typesense_search_events(search_params)
+                    agenda_results = build_agenda_results_from_nativeids(nativeids)
+                    return jsonify({'response': {'type': 'agenda', 'url': (agenda_results[0]["link"] if agenda_results else ""), 'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?", 'results': agenda_results}, 'thread_id': thread_id})
                 results = perform_typesense_search(search_params)
                 return jsonify({'results': results['results'], 'thread_id': thread_id})
             return jsonify({'response': response_text_2, 'thread_id': thread_id})
@@ -271,6 +384,10 @@ def apply_filters():
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
             if search_params:
+                if search_params.get("collection") == "obadb30725events":
+                    nativeids = perform_typesense_search_events(search_params)
+                    agenda_results = build_agenda_results_from_nativeids(nativeids)
+                    return jsonify({'response': {'type': 'agenda', 'url': (agenda_results[0]["link"] if agenda_results else ""), 'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?", 'results': agenda_results}, 'thread_id': thread_id})
                 results = perform_typesense_search(search_params)
                 return jsonify({'results': results['results'], 'thread_id': thread_id})
             return jsonify({'response': response_text_3, 'thread_id': thread_id})
