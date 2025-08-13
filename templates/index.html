@@ -14,11 +14,21 @@
                     <img src="/static/images/new-chat.svg" alt="New Chat" class="button-icon">
                     nieuwe vraag
                 </button>
-                <button id="help-button" onclick="startHelpThread()">
-                 help!
-                </button>
+                <button id="help-button" onclick="startHelpThread()">help!</button>
+
+                <!-- Mobiel: actiekoppen rechtsboven -->
+                <div id="mobile-actions">
+                    <button class="icon-btn" id="open-results-btn" aria-label="Resultaten" onclick="openResultPanel()">
+                        <img src="/static/images/result.png" alt="Resultaten" class="button-icon">
+                    </button>
+                    <button class="icon-btn" id="open-filters-btn" aria-label="Filters" onclick="openFilterPanel()">
+                        <img src="/static/images/filter.png" alt="Filters" class="button-icon">
+                    </button>
+                </div>
             </div>
+
             <div id="messages"></div>
+
             <div id="input-container">
                 <input type="text" id="user-input" placeholder="Vertel me waar je naar zoekt!" oninput="checkInput()">
                 <button id="send-button" onclick="sendMessage()" disabled>
@@ -26,17 +36,21 @@
                 </button>
             </div>
         </div>
-        <div id="result-section">
-            <h2 id="breadcrumbs">resultaten</h2> <!-- Update hier -->
+
+        <div id="result-section" aria-hidden="true" aria-modal="true" role="dialog">
+            <button class="mobile-back-chat" onclick="closeResultPanel()">chat</button>
+            <h2 id="breadcrumbs">resultaten</h2>
             <div id="search-results">
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
             </div>
-            <div id="detail-container"></div> <!-- Detailcontainer toegevoegd -->
+            <div id="detail-container"></div>
         </div>
-        <div id="filter-section">
+
+        <div id="filter-section" aria-hidden="true" aria-modal="true" role="dialog">
+            <button class="mobile-back-chat" onclick="closeFilterPanel()">chat</button>
             <h2>filters</h2>
             <div id="filters">
                 <div id="filter-options">
@@ -81,6 +95,10 @@
             <img src="/static/images/nexthybride.png" alt="Nexi Logo" id="nexi-logo">
         </div>
     </div>
+
+    <!-- Overlay voor open panelen -->
+    <div id="panel-overlay" onclick="closeAnyPanel()"></div>
+
     <script src="/static/js/script.js"></script>
 </body>
 </html>
