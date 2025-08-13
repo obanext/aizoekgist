@@ -1,43 +1,52 @@
+<!--
+  Nexi Cat Chat — Frontend (HTML)
+  Doel:
+  - Structuur van de webapp (chat, resultaten, filters)
+  - Mobiele UI: alleen chat bij start; icon-knoppen voor Resultaten en Filters
+  - Off-canvas panelen (#result-section, #filter-section) + overlay + back-knoppen
+-->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nexi Cat Chat</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
     <div id="app-container">
+        <!-- Mobiele actieknoppen -->
+        <div id="mobile-actions">
+            <button class="icon-btn" id="open-results-btn" aria-label="Resultaten" onclick="openResultPanel()">
+                <img src="/static/images/result.png" alt="Resultaten" class="button-icon" />
+                <span id="results-badge" class="badge" style="display:none;"></span>
+            </button>
+            <button class="icon-btn" id="open-filters-btn" aria-label="Filters" onclick="openFilterPanel()">
+                <img src="/static/images/filter.png" alt="Filters" class="button-icon" />
+            </button>
+        </div>
+
+        <!-- Chatsectie -->
         <div id="chat-section">
             <div id="chat-header">
                 <button id="new-chat-button" onclick="startNewChat()">
-                    <img src="/static/images/new-chat.svg" alt="New Chat" class="button-icon">
+                    <img src="/static/images/new-chat.svg" alt="New Chat" class="button-icon" />
                     nieuwe vraag
                 </button>
                 <button id="help-button" onclick="startHelpThread()">help!</button>
-
-                <!-- Mobiel: actiekoppen rechtsboven -->
-                <div id="mobile-actions">
-                    <button class="icon-btn" id="open-results-btn" aria-label="Resultaten" onclick="openResultPanel()">
-                        <img src="/static/images/result.png" alt="Resultaten" class="button-icon">
-                        <span id="results-badge" class="badge" style="display:none;"></span>
-                    </button>
-                    <button class="icon-btn" id="open-filters-btn" aria-label="Filters" onclick="openFilterPanel()">
-                        <img src="/static/images/filter.png" alt="Filters" class="button-icon">
-                    </button>
-                </div>
             </div>
 
             <div id="messages"></div>
 
             <div id="input-container">
-                <input type="text" id="user-input" placeholder="Vertel me waar je naar zoekt!" oninput="checkInput()">
+                <input type="text" id="user-input" placeholder="Vertel me waar je naar zoekt!" oninput="checkInput()" />
                 <button id="send-button" onclick="sendMessage()" disabled>
-                    <img src="/static/images/loep.svg" alt="Zoek" class="button-icon">
+                    <img src="/static/images/loep.svg" alt="Zoek" class="button-icon" />
                 </button>
             </div>
         </div>
 
+        <!-- Resultaten -->
         <div id="result-section" aria-hidden="true" aria-modal="true" role="dialog">
             <button class="mobile-back-chat" onclick="closeResultPanel()">chat</button>
             <h2 id="breadcrumbs">resultaten</h2>
@@ -50,54 +59,33 @@
             <div id="detail-container"></div>
         </div>
 
+        <!-- Filters -->
         <div id="filter-section" aria-hidden="true" aria-modal="true" role="dialog">
             <button class="mobile-back-chat" onclick="closeFilterPanel()">chat</button>
             <h2>filters</h2>
             <div id="filters">
                 <div id="filter-options">
-                    <label>
-                        <input type="checkbox" value="prentenboeken baby"> prentenboeken baby
-                    </label>
-                    <label>
-                        <input type="checkbox" value="prentenboeken tot 4 jaar"> prentenboeken tot 4 jaar
-                    </label>
-                    <label>
-                        <input type="checkbox" value="prentenboeken vanaf 4 jaar"> prentenboeken vanaf 4 jaar
-                    </label>
+                    <label><input type="checkbox" value="prentenboeken baby"> prentenboeken baby</label>
+                    <label><input type="checkbox" value="prentenboeken tot 4 jaar"> prentenboeken tot 4 jaar</label>
+                    <label><input type="checkbox" value="prentenboeken vanaf 4 jaar"> prentenboeken vanaf 4 jaar</label>
                     <br>
-                    <label>
-                        <input type="checkbox" value="fictie tot 9 jaar"> A tot 9 jaar
-                    </label>
-                    <label>
-                        <input type="checkbox" value="fictie 9 tot 12 jaar"> B 9 tot 12 jaar
-                    </label>
-                    <label>
-                        <input type="checkbox" value="fictie vanaf 12 jaar"> C vanaf 12 jaar
-                    </label>
-                    <label>
-                        <input type="checkbox" value="fictie vanaf 15 jaar"> D vanaf 15 jaar
-                    </label>
-                    <label>
-                        <input type="checkbox" value="fictie volwassenen"> fictie volwassenen
-                    </label>
+                    <label><input type="checkbox" value="fictie tot 9 jaar"> A tot 9 jaar</label>
+                    <label><input type="checkbox" value="fictie 9 tot 12 jaar"> B 9 tot 12 jaar</label>
+                    <label><input type="checkbox" value="fictie vanaf 12 jaar"> C vanaf 12 jaar</label>
+                    <label><input type="checkbox" value="fictie vanaf 15 jaar"> D vanaf 15 jaar</label>
+                    <label><input type="checkbox" value="fictie volwassenen"> fictie volwassenen</label>
                     <br>
-                    <label>
-                        <input type="checkbox" value="info tot 9 jaar"> info tot 9 jaar
-                    </label>
-                    <label>
-                        <input type="checkbox" value="info vanaf 9 jaar"> info vanaf 9 jaar
-                    </label>
-                    <label>
-                        <input type="checkbox" value="info volwassenen"> info volwassenen
-                    </label>
+                    <label><input type="checkbox" value="info tot 9 jaar"> info tot 9 jaar</label>
+                    <label><input type="checkbox" value="info vanaf 9 jaar"> info vanaf 9 jaar</label>
+                    <label><input type="checkbox" value="info volwassenen"> info volwassenen</label>
                 </div>
                 <button id="apply-filters-button" onclick="applyFiltersAndSend()">pas filters toe</button>
             </div>
-            <img src="/static/images/nexthybride.png" alt="Nexi Logo" id="nexi-logo">
+            <img src="/static/images/nexi-logo.png" alt="Nexi Logo" id="nexi-logo" />
         </div>
     </div>
 
-    <!-- Overlay voor open panelen -->
+    <!-- Overlay -->
     <div id="panel-overlay" onclick="closeAnyPanel()"></div>
 
     <script src="/static/js/script.js"></script>
