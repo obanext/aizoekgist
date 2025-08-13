@@ -334,6 +334,12 @@ button:disabled {
     pointer-events: auto;
 }
 
+#mobile-actions .button-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
 .icon-btn {
     position: relative;
     background: white;
