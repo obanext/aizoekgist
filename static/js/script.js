@@ -82,8 +82,12 @@ async function sendMessage() {
         clearTimeout(timeoutHandle);
 
         if (data.response && data.response.type === 'agenda') {
-            displayAssistantMessage(`<a href="${data.response.url}" target="_blank">${data.response.url}</a>`);
-            displayAssistantMessage(data.response.message);
+            if (data.response.url) {
+                displayAssistantMessage(`<a href="${data.response.url}" target="_blank">${data.response.url}</a>`);
+            }
+            if (data.response.message) {
+                displayAssistantMessage(data.response.message);
+            }
             previousResults = data.response.results;
             console.log("[DEBUG] Agenda results:", data.response.results);
             displayAgendaResults(data.response.results);
@@ -196,7 +200,6 @@ function displaySearchResults(results) {
     });
 }
 
-
 function displayAgendaResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
     searchResultsContainer.innerHTML = '';
@@ -257,9 +260,6 @@ function displayAgendaResults(results) {
         searchResultsContainer.appendChild(moreButton);
     }
 }
-
-
-
 
 function showAgendaDetail(result) {
     const detailContainer = document.getElementById('detail-container');
