@@ -25,10 +25,11 @@ assistant_id_4 = 'asst_9Adxq0d95aUQbMfEGtqJLVx1'
 log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
 logger = logging.getLogger('oba_app')
 logger.setLevel(getattr(logging, log_level, logging.INFO))
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-logger.addHandler(handler)
-
+log_handler = logging.StreamHandler()
+log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+if not logger.handlers:
+    logger.addHandler(log_handler)
+logger.propagate = False
 @app.before_request
 def _start_timer():
     g.start_time = time.time()
