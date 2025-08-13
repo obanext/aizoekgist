@@ -30,6 +30,7 @@ log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)
 if not logger.handlers:
     logger.addHandler(log_handler)
 logger.propagate = False
+
 @app.before_request
 def _start_timer():
     g.start_time = time.time()
@@ -216,7 +217,7 @@ def perform_typesense_search_events(params):
     if response.status_code == 200:
         data = response.json()
         hits = data["results"][0]["hits"]
-        nativeids = [h["document"]["nativeid"] for h in hits if "nativeid" in h["document"]]
+        nativeids = [h["document"].get("nativeid") or h["document"].get("native_id") for h in hits if (h.get("document") and (h["document"].get("nativeid") or h["document"].get("native_id")))]
         logger.info(f"typesense_events_hits count={len(hits)} nativeids={len(nativeids)}")
         return nativeids
     else:
@@ -340,6 +341,157 @@ def fetch_event_detail(nativeid):
         logger.exception(f"event_detail_error nativeid={nativeid}")
         return None
 
+def build_agenda_results_from_nativeids(nativeids):
+    results = []
+    for nid in nativeids:
+        detail = fetch_event_detail(nid)
+        if detail:
+            results.append(detail)
+    logger.info(f"agenda_build_from_nativeids count_in={len(nativeids)} count_out={len(results)}")
+    return results
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/start_thread', methods=['POST'])
+def start_thread():
+    try:
+        thread = openai.beta.threads.create()
+        logger.info(f"start_thread thread_id={thread.id}")
+        return jsonify({'thread_id': thread.id})
+    except Exception as e:
+        logger.exception("start_thread_error")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    try:
+        data = request.json
+        thread_id = data['thread_id']
+        user_input = data['user_input']
+        assistant_id = data['assistant_id']
+        logger.info(f"send_message_in thread_id={thread_id} assistant_id={assistant_id} text_len={len(user_input)}")
+
+        response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
+        search_query = extract_search_query(response_text)
+        comparison_query = extract_comparison_query(response_text)
+        agenda_query = extract_agenda_query(response_text)
+        logger.info(f"send_message_paths search={bool(search_query)} compare={bool(comparison_query)} agenda={bool(agenda_query)}")
+
+        if search_query:
+            response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
+            search_params = parse_assistant_message(response_text_2)
+            logger.info(f"search_params_present={bool(search_params)}")
+            if search_params:
+                coll = search_params.get("collection")
+                logger.info(f"collection={coll}")
+                if coll == "obadbevents13825":
+                    nativeids = perform_typesense_search_events(search_params)
+                    agenda_results = build_agenda_results_from_nativeids(nativeids)
+                    first_url = agenda_results[0]["link"] if agenda_results else ""
+                    logger.info(f"agenda_results_count={len(agenda_results)}")
+                    return jsonify({
+                        'response': {
+                            'type': 'agenda',
+                            'url': first_url,
+                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                            'results': agenda_results
+                        },
+                        'thread_id': thread_id
+                    })
+                return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
+            return jsonify({'response': response_text_2, 'thread_id': thread_id})
+
+        elif comparison_query:
+            response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
+            search_params = parse_assistant_message(response_text_3)
+            logger.info(f"compare_params_present={bool(search_params)}")
+            if search_params:
+                coll = search_params.get("collection")
+                logger.info(f"collection={coll}")
+                if coll == "obadbevents13825":
+                    nativeids = perform_typesense_search_events(search_params)
+                    agenda_results = build_agenda_results_from_nativeids(nativeids)
+                    first_url = agenda_results[0]["link"] if agenda_results else ""
+                    logger.info(f"agenda_results_count={len(agenda_results)}")
+                    return jsonify({
+                        'response': {
+                            'type': 'agenda',
+                            'url': first_url,
+                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                            'results': agenda_results
+                        },
+                        'thread_id': thread_id
+                    })
+                return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
+            return jsonify({'response': response_text_3, 'thread_id': thread_id})
+
+        elif agenda_query:
+            response_text_4, thread_id = call_assistant(assistant_id_4, agenda_query, thread_id)
+            try:
+                agenda_obj = json.loads(response_text_4)
+            except json.JSONDecodeError:
+                logger.warning("agenda_json_decode_error")
+                return jsonify({'response': response_text_4, 'thread_id': thread_id})
+
+            logger.info(f"agenda_detect keys={list(agenda_obj.keys())}")
+
+            if "API" in agenda_obj and "URL" in agenda_obj:
+                logger.info("agenda_path=A")
+                results = fetch_agenda_results(agenda_obj["API"])
+                return jsonify({
+                    'response': {
+                        'type': 'agenda',
+                        'url': agenda_obj.get("URL", ""),
+                        'message': agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                        'results': results
+                    },
+                    'thread_id': thread_id
+                })
+
+            if "q" in agenda_obj and "collection" in agenda_obj:
+                logger.info("agenda_path=B")
+                params = {
+                    "q": agenda_obj.get("q", ""),
+                    "collection": agenda_obj.get("collection", ""),
+                    "query_by": agenda_obj.get("query_by", "embedding"),
+                    "vector_query": agenda_obj.get("vector_query", "embedding:([], alpha: 0.8)"),
+                    "filter_by": agenda_obj.get("filter_by", "")
+                }
+                if params["collection"] == "obadbevents13825":
+                    nativeids = perform_typesense_search_events(params)
+                    agenda_results = build_agenda_results_from_nativeids(nativeids)
+                    first_url = agenda_results[0]["link"] if agenda_results else ""
+                    return jsonify({
+                        'response': {
+                            'type': 'agenda',
+                            'url': first_url,
+                            'message': agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                            'results': agenda_results
+                        },
+                        'thread_id': thread_id
+                    })
+                logger.info("agenda_b_not_events_collection")
+                return jsonify({
+                    'response': {
+                        'type': 'agenda',
+                        'url': "",
+                        'message': "Geen events-collectie gevonden.",
+                        'results': []
+                    },
+                    'thread_id': thread_id
+                })
+
+            logger.warning("agenda_unknown_format")
+            return jsonify({'response': response_text_4, 'thread_id': thread_id})
+
+        logger.info("send_message_fallback_text")
+        return jsonify({'response': response_text, 'thread_id': thread_id})
+
+    except Exception as e:
+        logger.exception("send_message_error")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/apply_filters', methods=['POST'])
 def apply_filters():
@@ -403,7 +555,7 @@ def proxy_details():
     url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization={oba_api_key}&output=json'
     logger.info(f"proxy_details url={url}")
     response = requests.get(url, timeout=15)
-    if response.headers.get('Content-Type') == 'application/json':
+    if response.headers.get('Content-Type','').startswith('application/json'):
         return jsonify(response.json()), response.status_code, response.headers.items()
     return response.text, response.status_code, response.headers.items()
 
