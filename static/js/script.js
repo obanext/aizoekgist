@@ -359,6 +359,8 @@ function displaySearchResults(results) {
         `;
         searchResultsContainer.appendChild(resultElement);
     });
+
+    updateResultsBadge(results.length);
 }
 
 function displayAgendaResults(results) {
@@ -417,6 +419,23 @@ function displayAgendaResults(results) {
     };
     searchResultsContainer.appendChild(moreButton);
   }
+  updateResultsBadge(results.length);
+}
+
+function updateResultsBadge(count) {
+    const badge = document.getElementById('results-badge');
+    const btn = document.getElementById('open-results-btn');
+    if (!badge || !btn) return;
+
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'inline-block' : 'none';
+
+    if (count > 0) {
+        btn.classList.add('enlarged');
+        setTimeout(() => {
+            btn.classList.remove('enlarged');
+        }, 2000);
+    }
 }
 
 function showAgendaDetail(result) {
