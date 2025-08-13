@@ -3,7 +3,6 @@
     font-family: 'Avenir Black';
     src: url('/static/fonts/AvenirBlack.ttf') format('truetype');
 }
-
 @font-face {
     font-family: 'Avenir Light';
     src: url('/static/fonts/AvenirLight.ttf') format('truetype');
@@ -19,14 +18,12 @@ body {
     margin: 0;
     font-size: 14px;
 }
-
 #app-container {
     display: flex;
     width: 90%;
     height: 90%;
     margin: 5% 2.5%;
 }
-
 #chat-section,
 #result-section,
 #filter-section {
@@ -42,14 +39,12 @@ body {
     border: 1px solid #ccc;
     border-radius: 10px;
 }
-
 #chat-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
 }
-
 #messages {
     flex: 1;
     overflow-y: auto;
@@ -58,13 +53,11 @@ body {
     display: flex;
     flex-direction: column;
 }
-
 #input-container {
     display: flex;
     align-items: center;
     margin-bottom: 10px;
 }
-
 #user-input {
     padding: 10px;
     border: 1px solid #ccc;
@@ -86,16 +79,11 @@ button {
     margin: 5px;
     height: 48px;
 }
-
-button:hover {
-    background-color: #574796;
-}
-
+button:hover { background-color: #574796; }
 button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
 }
-
 #new-chat-button,
 #help-button {
     background-color: white;
@@ -106,14 +94,12 @@ button:disabled {
     padding: 10px 15px;
     height: 48px;
 }
-
 #new-chat-button .button-icon,
 #help-button .button-icon {
     margin-right: 5px;
     width: 20px;
     height: 20px;
 }
-
 #send-button {
     width: 50px;
     display: flex;
@@ -121,15 +107,8 @@ button:disabled {
     align-items: center;
     padding: 0;
 }
-
-#send-button .button-icon {
-    width: 24px;
-    height: 24px;
-}
-
-#apply-filters-button {
-    width: 100%;
-}
+#send-button .button-icon { width: 24px; height: 24px; }
+#apply-filters-button { width: 100%; }
 
 /* FILTERS */
 #filter-section {
@@ -140,23 +119,16 @@ button:disabled {
     border-radius: 10px;
     position: relative;
 }
-
 #filter-section h2 {
     font-family: 'Avenir Black', Arial, sans-serif;
     margin: 0 0 10px 0;
 }
-
-#filters {
-    display: flex;
-    flex-direction: column;
-}
-
+#filters { display: flex; flex-direction: column; }
 #filters label {
     margin-bottom: 10px;
     display: block;
     font-family: 'Avenir Light', Arial, sans-serif;
 }
-
 #nexi-logo {
     height: 40px;
     position: absolute;
@@ -171,27 +143,23 @@ button:disabled {
     flex-direction: column;
     align-items: center;
 }
-
 #result-section h2 {
     font-family: 'Avenir Black', Arial, sans-serif;
     width: 100%;
     margin-bottom: 10px;
     text-align: left;
 }
-
 #search-results {
     width: 100%;
     height: calc(100vh - 100px);
     overflow-y: auto;
 }
-
 .book-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 5px;
     justify-items: center;
 }
-
 .agenda-list {
     display: flex;
     flex-direction: column;
@@ -206,14 +174,12 @@ button:disabled {
     text-align: center;
     cursor: pointer;
 }
-
 .book-cover {
     width: 150px;
     height: 200px;
     object-fit: cover;
     margin-bottom: 2px;
 }
-
 #search-results p {
     color: black;
     text-decoration: none;
@@ -233,27 +199,24 @@ button:disabled {
     align-items: flex-start;
     width: 100%;
     max-width: 720px;
-    background: transparent;
+    background: #fff;
     border-radius: 10px;
     overflow: hidden;
-    border: none;
-    box-shadow: none;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
-
 .agenda-card-link {
     display: flex;
     text-decoration: none;
     color: inherit;
     width: 100%;
 }
-
 .agenda-card-image {
     width: 200px;
     height: 150px;
     object-fit: cover;
     flex-shrink: 0;
 }
-
 .agenda-card-text {
     padding: 15px;
     display: flex;
@@ -261,27 +224,9 @@ button:disabled {
     justify-content: flex-start;
     flex: 1;
 }
-
-.agenda-date {
-    font-size: 13px;
-    margin-bottom: 5px;
-    color: #444;
-}
-
-.agenda-title {
-    font-weight: bold;
-    font-size: 16px;
-    margin-bottom: 5px;
-    color: #000;
-}
-
-.agenda-time,
-.agenda-location {
-    font-size: 13px;
-    margin-bottom: 4px;
-    color: #666;
-}
-
+.agenda-date { font-size: 13px; margin-bottom: 5px; color: #444; }
+.agenda-title { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #000; }
+.agenda-time, .agenda-location { font-size: 13px; margin-bottom: 4px; color: #666; }
 .agenda-summary {
     font-size: 13px;
     color: #333;
@@ -298,30 +243,23 @@ button:disabled {
     align-items: center;
     width: 100%;
 }
-
 .detail-container {
     display: flex;
     align-items: flex-start;
     margin-top: 20px;
 }
-
 .detail-cover {
     width: 200px;
     height: auto;
     margin-right: 20px;
 }
-
-.detail-summary {
-    flex: 1;
-}
-
+.detail-summary { flex: 1; }
 .detail-buttons {
     display: flex;
     gap: 10px;
     margin-top: 20px;
     align-items: flex-end;
 }
-
 .detail-buttons button {
     background-color: #6d5ab0;
     color: white;
@@ -331,10 +269,7 @@ button:disabled {
     cursor: pointer;
     height: 48px;
 }
-
-.detail-buttons button:hover {
-    background-color: #574796;
-}
+.detail-buttons button:hover { background-color: #574796; }
 
 /* MESSAGES */
 .user-message, .assistant-message {
@@ -346,14 +281,12 @@ button:disabled {
     display: inline-block;
     position: relative;
 }
-
 .user-message {
     background-color: white;
     color: black;
     border-bottom-right-radius: 0;
     align-self: flex-end;
 }
-
 .assistant-message {
     background-color: #f1f1f1;
     color: black;
@@ -366,31 +299,15 @@ button:disabled {
     font-family: 'Avenir Light', Arial, sans-serif;
     margin-bottom: 10px;
 }
-
-#breadcrumbs a {
-    color: black;
-    text-decoration: none;
-}
-
-#breadcrumbs a:hover {
-    text-decoration: underline;
-}
-
-.breadcrumb-title {
-    font-family: 'Avenir Light', Arial, sans-serif;
-}
+#breadcrumbs a { color: black; text-decoration: none; }
+#breadcrumbs a:hover { text-decoration: underline; }
+.breadcrumb-title { font-family: 'Avenir Light', Arial, sans-serif; }
 
 /* SCROLLBARS */
 #search-results::-webkit-scrollbar,
-#messages::-webkit-scrollbar {
-    width: 12px;
-}
-
+#messages::-webkit-scrollbar { width: 12px; }
 #search-results::-webkit-scrollbar-track,
-#messages::-webkit-scrollbar-track {
-    background: white;
-}
-
+#messages::-webkit-scrollbar-track { background: white; }
 #search-results::-webkit-scrollbar-thumb,
 #messages::-webkit-scrollbar-thumb {
     background-color: #6d5ab0;
@@ -399,31 +316,118 @@ button:disabled {
 }
 
 /* LOADER */
-.loader {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.loader .dot {
-    font-size: 24px;
-    margin: 0 2px;
-    animation: blink 1.4s infinite both;
-}
-
+.loader { display: flex; align-items: center; justify-content: center; }
+.loader .dot { font-size: 24px; margin: 0 2px; animation: blink 1.4s infinite both; }
 .loader .dot:nth-child(1) { animation-delay: 0s; }
 .loader .dot:nth-child(2) { animation-delay: 0.2s; }
 .loader .dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%{opacity:.2} 20%{opacity:1} 100%{opacity:.2} }
 
-@keyframes blink {
-    0% { opacity: 0.2; }
-    20% { opacity: 1; }
-    100% { opacity: 0.2; }
+/* ===== Mobiele UI: overlay, icon-knoppen, off-canvas panelen ===== */
+
+/* Overlay (globaal) */
+#panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 200ms ease;
+    z-index: 999;
+}
+
+/* Mobiele icon-knoppen rechtsboven */
+#mobile-actions {
+    display: none;
+    gap: 6px;
+}
+.icon-btn {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    height: 40px;
+    width: 40px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.icon-btn .button-icon { width: 22px; height: 22px; }
+
+/* Back-knop binnen panelen */
+.mobile-back-chat {
+    display: none;
+    position: absolute;
+    top: env(safe-area-inset-top, 8px);
+    left: 8px;
+    z-index: 1001;
+    background: white;
+    color: black;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    height: 36px;
+    padding: 0 12px;
 }
 
 /* RESPONSIVE */
 @media (max-width: 768px) {
+    html, body { height: 100%; margin: 0; }
+    body { height: 100dvh; overflow: hidden; }
+
     #app-container {
+        width: 100%;
+        height: 100dvh;
+        margin: 0;
         flex-direction: column;
     }
+
+    /* Standaard: alleen chat zichtbaar */
+    #chat-section {
+        position: relative;
+        flex: 1;
+        height: 100%;
+        border: 1px solid #ccc;
+        border-radius: 0;
+    }
+
+    /* Off-canvas panelen (rechts inschuiven) */
+    #result-section, #filter-section {
+        position: fixed;
+        top: 0; right: 0;
+        width: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        background: #fff;
+        z-index: 1000;
+        transform: translateX(100%);
+        transition: transform 300ms ease;
+        border: none;
+        border-radius: 0;
+        padding-top: 50px; 
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    #result-section.open, #filter-section.open { transform: translateX(0); }
+
+    /* Back-knop zichtbaar binnen open paneel */
+    #result-section.open .mobile-back-chat,
+    #filter-section.open .mobile-back-chat { display: inline-flex; }
+
+    /* Overlay zichtbaar als paneel open is */
+    body.panel-open #panel-overlay {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Verberg desktopknoppen; toon mobiele iconen */
+    #new-chat-button, #help-button { display: none; }
+    #mobile-actions { display: inline-flex; }
+
+    /* Grid compacter op mobiel */
+    .book-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .search-result { width: 45vw; height: auto; }
+    .book-cover { width: 100%; height: auto; }
+
+    /* Resultatenhoogte */
+    #search-results { height: calc(100dvh - 140px); }
 }
