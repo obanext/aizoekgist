@@ -324,7 +324,7 @@ def send_message():
             if search_params:
                 coll = search_params.get("collection")
                 logger.info(f"collection={coll}")
-                if coll == "obadb30725events":
+                if coll == "obadbevents13825":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
@@ -348,7 +348,7 @@ def send_message():
             if search_params:
                 coll = search_params.get("collection")
                 logger.info(f"collection={coll}")
-                if coll == "obadb30725events":
+                if coll == "obadbevents13825":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
@@ -397,7 +397,7 @@ def send_message():
                     "vector_query": agenda_obj.get("vector_query", "embedding:([], alpha: 0.8)"),
                     "filter_by": agenda_obj.get("filter_by", "")
                 }
-                if params["collection"] == "obadb30725events":
+                if params["collection"] == "obadbevents13825":
                     nativeids = perform_typesense_search_events(params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
@@ -451,7 +451,7 @@ def apply_filters():
             if search_params:
                 coll = search_params.get("collection")
                 logger.info(f"collection={coll}")
-                if coll == "obadb30725events":
+                if coll == "obadbevents13825":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     logger.info(f"agenda_results_count={len(agenda_results)}")
@@ -466,7 +466,7 @@ def apply_filters():
             if search_params:
                 coll = search_params.get("collection")
                 logger.info(f"collection={coll}")
-                if coll == "obadb30725events":
+                if coll == "obadbevents13825":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     logger.info(f"agenda_results_count={len(agenda_results)}")
