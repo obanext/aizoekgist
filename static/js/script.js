@@ -564,12 +564,14 @@ async function applyFiltersAndSend() {
 
         resetFilters();
 
-    if (window.innerWidth <= 768) {
-    document.getElementById('filter-section').classList.remove('open');
-    document.body.classList.remove('panel-open'); // echt terug naar chat
-    history.replaceState({ panel: 'chat' }, '', location.pathname);
-    updateActionButtons();
-}
+        if (window.innerWidth <= 768) {
+            document.getElementById('filter-section').classList.remove('open');
+            document.getElementById('result-section').classList.remove('open');
+            document.body.classList.remove('panel-open');
+
+            history.pushState({ panel: 'chat' }, '', location.pathname);
+            updateActionButtons();
+        }
 
     } catch (error) {
         hideLoader();
@@ -577,6 +579,7 @@ async function applyFiltersAndSend() {
 
     checkInput();
 }
+
 
 function startNewChat() {
     startThread();
