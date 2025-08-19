@@ -147,6 +147,15 @@ function checkInput() {
     applyFiltersButton.style.cursor = anyChecked ? "pointer" : "not-allowed";
 }
 
+function updateActionButtons() {
+    const resultsBtn = document.getElementById('open-results-btn');
+    const filtersBtn = document.getElementById('open-filters-btn');
+    const hasResults = Array.isArray(previousResults) && previousResults.length > 0;
+
+    if (resultsBtn) resultsBtn.disabled = !hasResults;
+    if (filtersBtn)  filtersBtn.disabled  = !hasResults;
+}
+
 async function startThread() {
     const response = await fetch('/start_thread', { method: 'POST' });
     const data = await response.json();
@@ -234,6 +243,7 @@ function resetThread() {
     scrollToBottom();
     resetFilters();
     linkedPPNs.clear();
+    updateActionButtons();
 }
 
 async function sendStatusKlaar() {
@@ -296,6 +306,7 @@ function displaySearchResults(results) {
     });
 
     updateResultsBadge(results.length);
+    updateActionButtons();
 }
 
 function displayAgendaResults(results) {
@@ -356,6 +367,7 @@ function displayAgendaResults(results) {
     }
 
     updateResultsBadge(results.length);
+    updateActionButtons();
 }
 
 function updateResultsBadge(count) {
@@ -534,6 +546,7 @@ function startNewChat() {
     scrollToBottom();
     resetFilters();
     linkedPPNs.clear();
+    updateActionButtons();
 }
 
 async function startHelpThread() {
@@ -639,6 +652,7 @@ function showErrorMessage() {
     hideLoader();
     clearTimeout(timeoutHandle);
     resetThread();
+    updateActionButtons();
     setTimeout(() => { clearErrorMessage(); }, 2000);
 }
 
@@ -675,4 +689,5 @@ window.onload = async () => {
     closeFilterPanel();
     closeResultPanel();
     if (!history.state) history.replaceState({ panel: 'chat' }, '', location.pathname);
+    updateActionButtons();
 };
