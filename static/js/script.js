@@ -555,7 +555,7 @@ function scrollToBottom() {
     messageContainer.scrollTop = messageContainer.scrollHeight;
 }
 function addOpeningMessage() {
-    const openingMessage = "Hi! I am Nexi, I help you find books and info in the OBA.";
+    const openingMessage = "Hoi! Ik ben Nexi, ik ben een AI zoekhulp. Je kan mij alles vragen over boeken en events. Zoals heb je boeken over prehistorische reptielen? Of, wat is er deze week te doen in OBA De Hallen?.";
     const messageContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
     messageElement.classList.add('assistant-message');
