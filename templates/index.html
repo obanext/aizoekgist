@@ -4,116 +4,84 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nexi Cat Chat</title>
-    <!-- Main stylesheet -->
     <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
     <div id="app-container">
-        <!-- ========================
-             Mobile action buttons
-             (Results, Filters, Back)
-             ======================== -->
+        <!-- Mobiele actieknoppen -->
         <div id="mobile-actions">
-            <!-- Back button (only shown on mobile when a panel is open) -->
-            <button class="icon-btn" id="back-chat-btn" aria-label="Back to chat" onclick="closeAnyPanel()" style="display:none;">
-                <img src="/static/images/loep.svg" alt="Back" class="button-icon" />
-            </button>
-
-            <!-- Results button (opens results panel) -->
-            <button class="icon-btn" id="open-results-btn" aria-label="Results" onclick="openResultPanel()">
-                <img src="/static/images/results.svg" alt="Results" class="button-icon" />
+            <button class="icon-btn" id="open-results-btn" aria-label="Resultaten" onclick="openResultPanel()">
+                <img src="/static/images/results.svg" alt="Resultaten" class="button-icon" />
                 <span id="results-badge" class="badge" style="display:none;"></span>
             </button>
-
-            <!-- Filters button (opens filters panel) -->
             <button class="icon-btn" id="open-filters-btn" aria-label="Filters" onclick="openFilterPanel()">
                 <img src="/static/images/filter.svg" alt="Filters" class="button-icon" />
             </button>
         </div>
 
-        <!-- ========================
-             Chat section
-             ======================== -->
+        <!-- Chatsectie -->
         <div id="chat-section">
-            <!-- Mobile logo (top left, only shown on small screens) -->
-            <img id="mobile-logo" src="/static/images/nexthybride.png" alt="Nexi logo">
-
-            <!-- Chat header: new chat + help (desktop only) -->
+        <img id="mobile-logo" src="/static/images/nexthybride.png" alt="Nexi logo">
             <div id="chat-header">
                 <button id="new-chat-button" onclick="startNewChat()">
                     <img src="/static/images/new-chat.svg" alt="New Chat" class="button-icon" />
-                    new question
+                    nieuwe vraag
                 </button>
                 <button id="help-button" onclick="startHelpThread()">help!</button>
             </div>
 
-            <!-- Chat messages (user + assistant) -->
             <div id="messages"></div>
 
-            <!-- Input bar (user text + send button) -->
             <div id="input-container">
-                <input type="text" id="user-input" placeholder="Tell me what you are looking for!" oninput="checkInput()" />
+                <input type="text" id="user-input" placeholder="Vertel me waar je naar zoekt!" oninput="checkInput()" />
                 <button id="send-button" onclick="sendMessage()" disabled>
-                    <img src="/static/images/loep.svg" alt="Search" class="button-icon" />
+                    <img src="/static/images/loep.svg" alt="Zoek" class="button-icon" />
                 </button>
             </div>
         </div>
 
-        <!-- ========================
-             Results panel (mobile overlay)
-             ======================== -->
+        <!-- Resultaten -->
         <div id="result-section" aria-hidden="true" aria-modal="true" role="dialog">
-            <h2 id="breadcrumbs">results</h2>
-            <!-- Grid with book/agenda search results -->
+            <button class="mobile-back-chat" onclick="closeResultPanel()">chat</button>
+            <h2 id="breadcrumbs">resultaten</h2>
             <div id="search-results">
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
             </div>
-            <!-- Detailed view of one selected result -->
             <div id="detail-container"></div>
         </div>
 
-        <!-- ========================
-             Filters panel (mobile overlay)
-             ======================== -->
+        <!-- Filters -->
         <div id="filter-section" aria-hidden="true" aria-modal="true" role="dialog">
+            <button class="mobile-back-chat" onclick="closeFilterPanel()">chat</button>
             <h2>filters</h2>
             <div id="filters">
-                <!-- Filter checkboxes (categories) -->
                 <div id="filter-options">
-                    <label><input type="checkbox" value="prentenboeken baby"> picture books baby</label>
-                    <label><input type="checkbox" value="prentenboeken tot 4 jaar"> picture books up to 4 years</label>
-                    <label><input type="checkbox" value="prentenboeken vanaf 4 jaar"> picture books 4+ years</label>
+                    <label><input type="checkbox" value="prentenboeken baby"> prentenboeken baby</label>
+                    <label><input type="checkbox" value="prentenboeken tot 4 jaar"> prentenboeken tot 4 jaar</label>
+                    <label><input type="checkbox" value="prentenboeken vanaf 4 jaar"> prentenboeken vanaf 4 jaar</label>
                     <br>
-                    <label><input type="checkbox" value="fictie tot 9 jaar"> A up to 9 years</label>
-                    <label><input type="checkbox" value="fictie 9 tot 12 jaar"> B 9–12 years</label>
-                    <label><input type="checkbox" value="fictie vanaf 12 jaar"> C 12+ years</label>
-                    <label><input type="checkbox" value="fictie vanaf 15 jaar"> D 15+ years</label>
-                    <label><input type="checkbox" value="fictie volwassenen"> fiction adults</label>
+                    <label><input type="checkbox" value="fictie tot 9 jaar"> A tot 9 jaar</label>
+                    <label><input type="checkbox" value="fictie 9 tot 12 jaar"> B 9 tot 12 jaar</label>
+                    <label><input type="checkbox" value="fictie vanaf 12 jaar"> C vanaf 12 jaar</label>
+                    <label><input type="checkbox" value="fictie vanaf 15 jaar"> D vanaf 15 jaar</label>
+                    <label><input type="checkbox" value="fictie volwassenen"> fictie volwassenen</label>
                     <br>
-                    <label><input type="checkbox" value="info tot 9 jaar"> info up to 9 years</label>
-                    <label><input type="checkbox" value="info vanaf 9 jaar"> info 9+ years</label>
-                    <label><input type="checkbox" value="info volwassenen"> info adults</label>
+                    <label><input type="checkbox" value="info tot 9 jaar"> info tot 9 jaar</label>
+                    <label><input type="checkbox" value="info vanaf 9 jaar"> info vanaf 9 jaar</label>
+                    <label><input type="checkbox" value="info volwassenen"> info volwassenen</label>
                 </div>
-                <!-- Apply filters button -->
-                <button id="apply-filters-button" onclick="applyFiltersAndSend()">apply filters</button>
+                <button id="apply-filters-button" onclick="applyFiltersAndSend()">pas filters toe</button>
             </div>
-            <!-- Desktop logo (bottom right, only visible on large screens) -->
             <img src="/static/images/nexi-logo.png" alt="Nexi Logo" id="nexi-logo" />
         </div>
     </div>
 
-    <!-- ========================
-         Overlay (darkens background
-         when result/filter panel is open)
-         ======================== -->
+    <!-- Overlay -->
     <div id="panel-overlay" onclick="closeAnyPanel()"></div>
 
-    <!-- ========================
-         Main script
-         ======================== -->
     <script src="/static/js/script.js"></script>
 </body>
 </html>
