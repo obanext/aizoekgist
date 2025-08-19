@@ -159,33 +159,38 @@ function checkInput() {
 function updateActionButtons() {
     const resultsBtn = document.getElementById('open-results-btn');
     const filtersBtn = document.getElementById('open-filters-btn');
-    const sendBtn = document.getElementById('send-button');
+    const backBtn = document.getElementById('back-chat-btn');
 
     const hasResults = Array.isArray(previousResults) && previousResults.length > 0;
     const resultOpen = document.getElementById('result-section').classList.contains('open');
     const filterOpen = document.getElementById('filter-section').classList.contains('open');
 
-    // default
+    // standaard
     resultsBtn.style.display = 'none';
     filtersBtn.style.display = 'none';
-    sendBtn.style.display = 'flex';
+    backBtn.style.display = 'none';
 
     if (filterOpen) {
-        sendBtn.onclick = () => closeFilterPanel(true);
+        // filter open → toon loep (back) + results
+        backBtn.style.display = 'inline-flex';
+        backBtn.onclick = () => closeFilterPanel(true);
         resultsBtn.style.display = 'inline-flex';
         resultsBtn.disabled = !hasResults;
     } else if (resultOpen) {
-        sendBtn.onclick = () => closeResultPanel(true);
+        // results open → toon loep (back) + filters
+        backBtn.style.display = 'inline-flex';
+        backBtn.onclick = () => closeResultPanel(true);
         filtersBtn.style.display = 'inline-flex';
         filtersBtn.disabled = !hasResults;
     } else {
-        sendBtn.onclick = () => sendMessage();
+        // geen overlay → toon results + filters
         resultsBtn.disabled = !hasResults;
         filtersBtn.disabled = !hasResults;
         resultsBtn.style.display = 'inline-flex';
         filtersBtn.style.display = 'inline-flex';
     }
 }
+
 
 
 async function startThread() {
