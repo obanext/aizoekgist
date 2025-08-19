@@ -32,6 +32,24 @@ body {
     box-sizing: border-box;
 }
 
+/* Logo (desktop & mobiel) */
+#app-logo {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    height: 40px;
+    z-index: 1002;
+}
+@media (max-width: 768px) {
+    #app-logo {
+        top: 20px;     /* iets naar beneden */
+        left: 16px;    /* iets naar rechts */
+        bottom: auto;
+        right: auto;
+        height: 40px;  /* iets groter dan eerst */
+    }
+}
+
 /* Chat */
 #chat-section {
     flex: 1.7;
@@ -440,23 +458,4 @@ button:disabled {
     visibility: hidden;
     transition: opacity 200ms ease;
     z-index: 999;
-}
-/* Standaard: desktop rechtsonder */
-#app-logo {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    height: 40px;
-    z-index: 1002;
-}
-
-/* Mobiel: linksboven */
-@media (max-width: 768px) {
-    #app-logo {
-        top: 10px;
-        left: 10px;
-        bottom: auto;
-        right: auto;
-        height: 32px;
-    }
 }
