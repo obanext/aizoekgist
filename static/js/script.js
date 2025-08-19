@@ -174,9 +174,33 @@ function updateActionButtons() {
     const filtersBtn = document.getElementById('open-filters-btn');
     const hasResults = Array.isArray(previousResults) && previousResults.length > 0;
 
-    if (resultsBtn) resultsBtn.disabled = !hasResults;
-    if (filtersBtn)  filtersBtn.disabled  = !hasResults;
+    const resultOpen = document.getElementById('result-section').classList.contains('open');
+    const filterOpen = document.getElementById('filter-section').classList.contains('open');
+
+    // default: uitzetten
+    resultsBtn.style.display = 'none';
+    filtersBtn.style.display = 'none';
+
+    if (filterOpen) {
+        // filter open → toon loep en resultaten
+        document.getElementById('send-button').style.display = 'flex';
+        resultsBtn.style.display = 'inline-flex';
+        resultsBtn.disabled = !hasResults;
+    } else if (resultOpen) {
+        // results open → toon loep en filters
+        document.getElementById('send-button').style.display = 'flex';
+        filtersBtn.style.display = 'inline-flex';
+        filtersBtn.disabled = !hasResults;
+    } else {
+        // geen overlay → alleen default status
+        resultsBtn.disabled = !hasResults;
+        filtersBtn.disabled = !hasResults;
+        resultsBtn.style.display = 'inline-flex';
+        filtersBtn.style.display = 'inline-flex';
+        document.getElementById('send-button').style.display = 'flex';
+    }
 }
+
 
 async function startThread() {
     const response = await fetch('/start_thread', { method: 'POST' });
