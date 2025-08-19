@@ -42,11 +42,11 @@ body {
 }
 @media (max-width: 768px) {
     #app-logo {
-        top: 20px;     /* iets naar beneden */
-        left: 16px;    /* iets naar rechts */
+        top: 20px;
+        left: 16px;
         bottom: auto;
         right: auto;
-        height: 40px;  /* iets groter dan eerst */
+        height: 40px;
     }
 }
 
@@ -391,6 +391,24 @@ button:disabled {
     transition: transform 0.3s ease;
 }
 
+/* Chatknop */
+#chat-toggle-btn {
+    display: none; /* standaard uit */
+}
+@media (max-width: 768px) {
+    #chat-toggle-btn {
+        display: none;
+    }
+    #result-section.open ~ #mobile-actions #chat-toggle-btn {
+        display: inline-flex;
+        order: 3; /* rechts van filterknop */
+    }
+    #filter-section.open ~ #mobile-actions #chat-toggle-btn {
+        display: inline-flex;
+        order: 2; /* rechts van resultknop */
+    }
+}
+
 /* Mobiel */
 @media (max-width: 768px) {
     html, body { height: 100%; margin: 0; }
@@ -407,7 +425,6 @@ button:disabled {
         height: 100%;
         border-radius: 0;
     }
-    /* Actieknoppen rechtsboven */
     #mobile-actions {
         display: inline-flex;
         align-items: center;
@@ -416,7 +433,6 @@ button:disabled {
         top: 10px;
         right: 10px;
     }
-    /* Messages onder header */
     #messages {
         margin-top: 60px;
     }
@@ -436,8 +452,6 @@ button:disabled {
         -webkit-overflow-scrolling: touch;
     }
     #result-section.open, #filter-section.open { transform: translateX(0); }
-    #result-section.open .mobile-back-chat,
-    #filter-section.open .mobile-back-chat { display: inline-flex; }
     body.panel-open #panel-overlay {
         opacity: 1;
         visibility: visible;
