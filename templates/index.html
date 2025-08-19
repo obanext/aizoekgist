@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -8,53 +9,44 @@
 </head>
 <body>
     <div id="app-container">
-
-        <!-- Mobile action bar (top-right on mobile) -->
+        <!-- Mobile action buttons (results + filters) -->
         <div id="mobile-actions">
-            <!-- Back button: only visible on mobile when a panel is open -->
-            <button class="icon-btn" id="back-chat-btn" aria-label="Back to chat" onclick="closeAnyPanel()" style="display:none;">
-                <img src="/static/images/loep.svg" alt="Back" class="button-icon" />
-            </button>
-            <!-- Results button -->
-            <button class="icon-btn" id="open-results-btn" aria-label="Results" onclick="openResultPanel()" disabled>
-                <img src="/static/images/results.svg" alt="Results" class="button-icon" />
+            <button class="icon-btn" id="open-results-btn" aria-label="Resultaten" onclick="openResultPanel()" disabled>
+                <img src="/static/images/results.svg" alt="Resultaten" class="button-icon" />
                 <span id="results-badge" class="badge" style="display:none;"></span>
             </button>
-            <!-- Filter button -->
             <button class="icon-btn" id="open-filters-btn" aria-label="Filters" onclick="openFilterPanel()" disabled>
                 <img src="/static/images/filter.svg" alt="Filters" class="button-icon" />
             </button>
         </div>
 
-        <!-- Chat section (always visible) -->
+        <!-- Mobile logo (only visible on mobile) -->
+        <img id="mobile-logo" src="/static/images/nexthybride.png" alt="Nexi logo">
+
+        <!-- Chat section -->
         <div id="chat-section">
-            <!-- Mobile logo (top-left on mobile only) -->
-            <img id="mobile-logo" src="/static/images/nexthybride.png" alt="Nexi logo">
-            
-            <!-- Desktop header with new chat/help buttons -->
             <div id="chat-header">
                 <button id="new-chat-button" onclick="startNewChat()">
                     <img src="/static/images/new-chat.svg" alt="New Chat" class="button-icon" />
-                    new question
+                    nieuwe vraag
                 </button>
                 <button id="help-button" onclick="startHelpThread()">help!</button>
             </div>
 
-            <!-- Chat messages -->
             <div id="messages"></div>
 
-            <!-- User input + send button -->
             <div id="input-container">
-                <input type="text" id="user-input" placeholder="Tell me what you are looking for!" oninput="checkInput()" />
+                <input type="text" id="user-input" placeholder="Vertel me waar je naar zoekt!" oninput="checkInput()" />
                 <button id="send-button" onclick="sendMessage()" disabled>
-                    <img src="/static/images/loep.svg" alt="Search" class="button-icon" />
+                    <img src="/static/images/loep.svg" alt="Zoek" class="button-icon" />
                 </button>
             </div>
         </div>
 
-        <!-- Results panel (slides in on mobile, side column on desktop) -->
+        <!-- Results panel -->
         <div id="result-section" aria-hidden="true" aria-modal="true" role="dialog">
-            <h2 id="breadcrumbs">results</h2>
+            <button class="mobile-back-chat" onclick="closeResultPanel()">chat</button>
+            <h2 id="breadcrumbs">resultaten</h2>
             <div id="search-results">
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
@@ -64,12 +56,12 @@
             <div id="detail-container"></div>
         </div>
 
-        <!-- Filters panel (slides in on mobile, side column on desktop) -->
+        <!-- Filters panel -->
         <div id="filter-section" aria-hidden="true" aria-modal="true" role="dialog">
+            <button class="mobile-back-chat" onclick="closeFilterPanel()">chat</button>
             <h2>filters</h2>
             <div id="filters">
                 <div id="filter-options">
-                    <!-- Example filter checkboxes -->
                     <label><input type="checkbox" value="prentenboeken baby"> prentenboeken baby</label>
                     <label><input type="checkbox" value="prentenboeken tot 4 jaar"> prentenboeken tot 4 jaar</label>
                     <label><input type="checkbox" value="prentenboeken vanaf 4 jaar"> prentenboeken vanaf 4 jaar</label>
@@ -84,14 +76,14 @@
                     <label><input type="checkbox" value="info vanaf 9 jaar"> info vanaf 9 jaar</label>
                     <label><input type="checkbox" value="info volwassenen"> info volwassenen</label>
                 </div>
-                <button id="apply-filters-button" onclick="applyFiltersAndSend()">apply filters</button>
+                <button id="apply-filters-button" onclick="applyFiltersAndSend()">pas filters toe</button>
             </div>
-            <!-- Desktop logo bottom-right -->
+            <!-- Desktop logo (bottom right) -->
             <img src="/static/images/nexi-logo.png" alt="Nexi Logo" id="nexi-logo" />
         </div>
     </div>
 
-    <!-- Overlay (used on mobile when a panel is open) -->
+    <!-- Overlay -->
     <div id="panel-overlay" onclick="closeAnyPanel()"></div>
 
     <script src="/static/js/script.js"></script>
