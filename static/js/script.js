@@ -10,7 +10,6 @@ function openFilterPanel(pushHistory = true) {
     other.classList.remove('open');
     panel.classList.add('open');
     document.body.classList.add('panel-open');
-    updateChatToggleButton();
     updateActionButtons();
     if (pushHistory) history.pushState({ panel: 'filters' }, '', '#filters');
 }
@@ -21,7 +20,6 @@ function openResultPanel(pushHistory = true) {
     other.classList.remove('open');
     panel.classList.add('open');
     document.body.classList.add('panel-open');
-    updateChatToggleButton();
     updateActionButtons();
     if (pushHistory) history.pushState({ panel: 'results' }, '', '#results');
 }
@@ -32,7 +30,6 @@ function closeFilterPanel(useHistoryBack = false) {
     if (!document.getElementById('result-section').classList.contains('open')) {
         document.body.classList.remove('panel-open');
     }
-    updateChatToggleButton();
     updateActionButtons();
     if (useHistoryBack && history.state && history.state.panel === 'filters') {
         history.back();
@@ -45,7 +42,6 @@ function closeResultPanel(useHistoryBack = false) {
     if (!document.getElementById('filter-section').classList.contains('open')) {
         document.body.classList.remove('panel-open');
     }
-    updateChatToggleButton();
     updateActionButtons();
     if (useHistoryBack && history.state && history.state.panel === 'results') {
         history.back();
@@ -57,21 +53,8 @@ function closeAnyPanel() {
                     document.getElementById('result-section').classList.contains('open');
     closeFilterPanel();
     closeResultPanel();
-    updateChatToggleButton();
     if (hasOpen && history.state && history.state.panel) {
         history.back();
-    }
-}
-
-function updateChatToggleButton() {
-    const chatBtn = document.getElementById('chat-toggle-btn');
-    const resultOpen = document.getElementById('result-section').classList.contains('open');
-    const filterOpen = document.getElementById('filter-section').classList.contains('open');
-
-    if (resultOpen || filterOpen) {
-        chatBtn.style.display = 'inline-flex';
-    } else {
-        chatBtn.style.display = 'none';
     }
 }
 
@@ -93,7 +76,7 @@ function updateChatToggleButton() {
             closeResultPanel();
             document.body.classList.remove('panel-open');
         }
-        updateChatToggleButton();
+        updateActionButtons();
     });
 })();
 
@@ -176,32 +159,31 @@ function checkInput() {
 function updateActionButtons() {
     const resultsBtn = document.getElementById('open-results-btn');
     const filtersBtn = document.getElementById('open-filters-btn');
-    const hasResults = Array.isArray(previousResults) && previousResults.length > 0;
+    const sendBtn = document.getElementById('send-button');
 
+    const hasResults = Array.isArray(previousResults) && previousResults.length > 0;
     const resultOpen = document.getElementById('result-section').classList.contains('open');
     const filterOpen = document.getElementById('filter-section').classList.contains('open');
 
-    // default: uitzetten
+    // default
     resultsBtn.style.display = 'none';
     filtersBtn.style.display = 'none';
+    sendBtn.style.display = 'flex';
 
     if (filterOpen) {
-        // filter open → toon loep en resultaten
-        document.getElementById('send-button').style.display = 'flex';
+        sendBtn.onclick = () => closeFilterPanel(true);
         resultsBtn.style.display = 'inline-flex';
         resultsBtn.disabled = !hasResults;
     } else if (resultOpen) {
-        // results open → toon loep en filters
-        document.getElementById('send-button').style.display = 'flex';
+        sendBtn.onclick = () => closeResultPanel(true);
         filtersBtn.style.display = 'inline-flex';
         filtersBtn.disabled = !hasResults;
     } else {
-        // geen overlay → alleen default status
+        sendBtn.onclick = () => sendMessage();
         resultsBtn.disabled = !hasResults;
         filtersBtn.disabled = !hasResults;
         resultsBtn.style.display = 'inline-flex';
         filtersBtn.style.display = 'inline-flex';
-        document.getElementById('send-button').style.display = 'flex';
     }
 }
 
