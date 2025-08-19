@@ -564,9 +564,10 @@ async function applyFiltersAndSend() {
 
         resetFilters();
 
-       if (window.innerWidth <= 768) {
-    closeFilterPanel(false); 
-    history.replaceState({ panel: 'chat' }, '', location.pathname); 
+    if (window.innerWidth <= 768) {
+    document.getElementById('filter-section').classList.remove('open');
+    document.body.classList.remove('panel-open'); // echt terug naar chat
+    history.replaceState({ panel: 'chat' }, '', location.pathname);
     updateActionButtons();
 }
 
