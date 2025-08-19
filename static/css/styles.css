@@ -463,3 +463,8 @@ button:disabled {
     .book-cover { width: 100%; height: auto; }
     #search-results { height: calc(100dvh - 140px); }
 }
+
+.hidden {
+    display: none;
+}
+
