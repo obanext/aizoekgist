@@ -11,14 +11,18 @@
         <img id="app-logo" src="/static/images/nexthybride.png" alt="Nexi logo">
         <!-- Mobiele actieknoppen -->
         <div id="mobile-actions">
-            <button class="icon-btn" id="open-results-btn" aria-label="Resultaten" onclick="openResultPanel()">
-                <img src="/static/images/results.svg" alt="Resultaten" class="button-icon" />
-                <span id="results-badge" class="badge" style="display:none;"></span>
-            </button>
-            <button class="icon-btn" id="open-filters-btn" aria-label="Filters" onclick="openFilterPanel()">
-                <img src="/static/images/filter.svg" alt="Filters" class="button-icon" />
-            </button>
-        </div>
+                <button class="icon-btn" id="open-results-btn" aria-label="Resultaten" onclick="openResultPanel()">
+                    <img src="/static/images/results.svg" alt="Resultaten" class="button-icon" />
+                    <span id="results-badge" class="badge" style="display:none;"></span>
+                </button>
+                <button class="icon-btn" id="open-filters-btn" aria-label="Filters" onclick="openFilterPanel()">
+                    <img src="/static/images/filter.svg" alt="Filters" class="button-icon" />
+                </button>
+    <!-- Chatknop voor mobiel -->
+    <button class="icon-btn" id="chat-toggle-btn" aria-label="Chat" onclick="closeAnyPanel()">
+        <img src="/static/images/loep.svg" alt="Chat" class="button-icon" />
+    </button>
+</div>
 
         <!-- Chatsectie -->
         <div id="chat-section">
