@@ -628,7 +628,7 @@ function scrollToBottom() {
 }
 
 function addOpeningMessage() {
-    const openingMessage = "Hoi! Ik ben Nexi, ik help je zoeken naar boeken en informatie in de OBA. Bijvoorbeeld: 'boeken die lijken op Wereldspionnen' of 'heb je informatie over zeezoogdieren?'";
+    const openingMessage = "Hoi! Ik ben Nexi, ik ben een AI-zoekhulp. Je kan mij alles vragen over boeken en events in de OBA. Bijvoorbeeld: 'boeken over prehistorische planteneters' of 'wat is er volgende week te doen in De Hallen?'";
     const messageContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
     messageElement.classList.add('assistant-message');
