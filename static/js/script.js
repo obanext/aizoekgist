@@ -48,6 +48,21 @@ function closeResultPanel(useHistoryBack = false) {
     }
 }
 
+function isBookDatabase(collection) {
+    return collection === 'obadbx';
+}
+
+function toggleBookFiltersBasedOnDatabase(collection) {
+    const filterSection = document.getElementById('filter-section');
+    
+    if (isBookDatabase(collection)) {
+        filterSection.classList.remove('hidden');
+    } else {
+        filterSection.classList.add('hidden');
+    }
+}
+
+
 function closeAnyPanel() {
     const hasOpen = document.getElementById('filter-section').classList.contains('open') ||
                     document.getElementById('result-section').classList.contains('open');
@@ -233,6 +248,12 @@ async function sendMessage() {
         hideLoader();
         clearTimeout(timeoutHandle);
 
+        // Controleer of de collectie 'obadbx' is
+        if (data.response?.collection) {
+            const collection = data.response.collection;
+            toggleBookFiltersBasedOnDatabase(collection);  // Pas de filters aan
+        }
+
         if (data.response && data.response.type === 'agenda') {
             if (data.response.url) {
                 displayAssistantMessage(`<a href="${data.response.url}" target="_blank">Bekijk de agenda op OBA.nl</a>`);
@@ -268,6 +289,7 @@ async function sendMessage() {
     checkInput();
     scrollToBottom();
 }
+
 
 function resetThread() {
     startThread();
