@@ -11,19 +11,8 @@ function openFilterPanel(pushHistory = true) {
     panel.classList.add('open');
     document.body.classList.add('panel-open');
     updateChatToggleButton();
+    updateActionButtons();
     if (pushHistory) history.pushState({ panel: 'filters' }, '', '#filters');
-}
-
-function closeFilterPanel(useHistoryBack = false) {
-    const panel = document.getElementById('filter-section');
-    panel.classList.remove('open');
-    if (!document.getElementById('result-section').classList.contains('open')) {
-        document.body.classList.remove('panel-open');
-    }
-    updateChatToggleButton();
-    if (useHistoryBack && history.state && history.state.panel === 'filters') {
-        history.back();
-    }
 }
 
 function openResultPanel(pushHistory = true) {
@@ -33,7 +22,21 @@ function openResultPanel(pushHistory = true) {
     panel.classList.add('open');
     document.body.classList.add('panel-open');
     updateChatToggleButton();
+    updateActionButtons();
     if (pushHistory) history.pushState({ panel: 'results' }, '', '#results');
+}
+
+function closeFilterPanel(useHistoryBack = false) {
+    const panel = document.getElementById('filter-section');
+    panel.classList.remove('open');
+    if (!document.getElementById('result-section').classList.contains('open')) {
+        document.body.classList.remove('panel-open');
+    }
+    updateChatToggleButton();
+    updateActionButtons();
+    if (useHistoryBack && history.state && history.state.panel === 'filters') {
+        history.back();
+    }
 }
 
 function closeResultPanel(useHistoryBack = false) {
@@ -43,6 +46,7 @@ function closeResultPanel(useHistoryBack = false) {
         document.body.classList.remove('panel-open');
     }
     updateChatToggleButton();
+    updateActionButtons();
     if (useHistoryBack && history.state && history.state.panel === 'results') {
         history.back();
     }
