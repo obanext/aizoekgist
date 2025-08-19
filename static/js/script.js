@@ -235,7 +235,7 @@ async function sendMessage() {
 
         if (data.response && data.response.type === 'agenda') {
             if (data.response.url) {
-                displayAssistantMessage(`<a href="${data.response.url}" target="_blank">${data.response.url}</a>`);
+                displayAssistantMessage(`<a href="${data.response.url}" target="_blank">Bekijk de agenda op OBA.nl</a>`);
             }
             if (data.response.message) {
                 displayAssistantMessage(data.response.message);
