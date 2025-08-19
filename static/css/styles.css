@@ -391,24 +391,6 @@ button:disabled {
     transition: transform 0.3s ease;
 }
 
-/* Chatknop */
-#chat-toggle-btn {
-    display: none; /* standaard uit */
-}
-@media (max-width: 768px) {
-    #chat-toggle-btn {
-        display: none;
-    }
-    #result-section.open ~ #mobile-actions #chat-toggle-btn {
-        display: inline-flex;
-        order: 3; /* rechts van filterknop */
-    }
-    #filter-section.open ~ #mobile-actions #chat-toggle-btn {
-        display: inline-flex;
-        order: 2; /* rechts van resultknop */
-    }
-}
-
 /* Mobiel */
 @media (max-width: 768px) {
     html, body { height: 100%; margin: 0; }
