@@ -1,39 +1,20 @@
-/* ============================================================
-   Nexi Chat Application - script.js
-   ------------------------------------------------------------
-   Handles chat, search results, filters, mobile panels, and UI.
-   Includes responsive logic for mobile vs. desktop.
-   All functions are documented in English for clarity.
-============================================================ */
-
-/* ============================================================
-   Global State
-============================================================ */
 let thread_id = null;
 let timeoutHandle = null;
 let previousResults = [];
 let linkedPPNs = new Set();
 
-/* =========================================================
-   Mobile panel helpers: open/close state management
-   ========================================================= */
-
-// Open the filter panel (mobile overlay)
+/* ===== Mobiele helpers: panel state, overlay, history ===== */
 function openFilterPanel(pushHistory = true) {
     const panel = document.getElementById('filter-section');
     const other = document.getElementById('result-section');
     other.classList.remove('open');
     panel.classList.add('open');
     document.body.classList.add('panel-open');
-    document.getElementById("back-chat-btn").style.display = "inline-flex"; // Show back button
     if (pushHistory) history.pushState({ panel: 'filters' }, '', '#filters');
 }
-
-// Close the filter panel
 function closeFilterPanel(useHistoryBack = false) {
     const panel = document.getElementById('filter-section');
     panel.classList.remove('open');
-    document.getElementById("back-chat-btn").style.display = "none"; // Hide back button
     if (!document.getElementById('result-section').classList.contains('open')) {
         document.body.classList.remove('panel-open');
     }
@@ -41,23 +22,17 @@ function closeFilterPanel(useHistoryBack = false) {
         history.back();
     }
 }
-
-// Open the results panel (mobile overlay)
 function openResultPanel(pushHistory = true) {
     const panel = document.getElementById('result-section');
     const other = document.getElementById('filter-section');
     other.classList.remove('open');
     panel.classList.add('open');
     document.body.classList.add('panel-open');
-    document.getElementById("back-chat-btn").style.display = "inline-flex"; // Show back button
     if (pushHistory) history.pushState({ panel: 'results' }, '', '#results');
 }
-
-// Close the results panel
 function closeResultPanel(useHistoryBack = false) {
     const panel = document.getElementById('result-section');
     panel.classList.remove('open');
-    document.getElementById("back-chat-btn").style.display = "none"; // Hide back button
     if (!document.getElementById('filter-section').classList.contains('open')) {
         document.body.classList.remove('panel-open');
     }
@@ -65,8 +40,6 @@ function closeResultPanel(useHistoryBack = false) {
         history.back();
     }
 }
-
-// Close any panel that is currently open
 function closeAnyPanel() {
     const hasOpen = document.getElementById('filter-section').classList.contains('open') ||
                     document.getElementById('result-section').classList.contains('open');
@@ -77,9 +50,7 @@ function closeAnyPanel() {
     }
 }
 
-/* =========================================================
-   History management for back/forward navigation
-   ========================================================= */
+/* History: initial state + popstate handler */
 (function initHistory() {
     if (!history.state) {
         history.replaceState({ panel: 'chat' }, '', location.pathname);
@@ -100,9 +71,7 @@ function closeAnyPanel() {
     });
 })();
 
-/* =========================================================
-   Swipe gestures for mobile (open/close panels)
-   ========================================================= */
+/* Swipe-gestures (mobiel) */
 let touchStartX = 0;
 let touchStartY = 0;
 let touchActivePanel = null;
@@ -110,7 +79,6 @@ const EDGE_GUTTER = 24;
 const SWIPE_THRESH_X = 60;
 const SWIPE_MAX_Y = 50;
 
-// Record touch start position
 function onTouchStart(e) {
     if (!e.touches || e.touches.length !== 1) return;
     const t = e.touches[0];
@@ -121,8 +89,6 @@ function onTouchStart(e) {
     const filOpen = document.getElementById('filter-section').classList.contains('open');
     touchActivePanel = resOpen ? 'results' : (filOpen ? 'filters' : 'chat');
 }
-
-// Handle swipe release
 function onTouchEnd(e) {
     if (!touchStartX && !touchStartY) return;
 
@@ -164,11 +130,7 @@ function onTouchEnd(e) {
 document.addEventListener('touchstart', onTouchStart, { passive: true });
 document.addEventListener('touchend', onTouchEnd, { passive: true });
 
-/* =========================================================
-   Chat input handling (send, filters, etc.)
-   ========================================================= */
-
-// Enable/disable buttons depending on input state
+/* ===== Functionaliteit chat en zoekresultaten ===== */
 function checkInput() {
     const userInput = document.getElementById('user-input').value.trim();
     const sendButton = document.getElementById('send-button');
@@ -185,7 +147,6 @@ function checkInput() {
     applyFiltersButton.style.cursor = anyChecked ? "pointer" : "not-allowed";
 }
 
-// Update the state of action buttons (results + filters)
 function updateActionButtons() {
     const resultsBtn = document.getElementById('open-results-btn');
     const filtersBtn = document.getElementById('open-filters-btn');
@@ -195,18 +156,12 @@ function updateActionButtons() {
     if (filtersBtn)  filtersBtn.disabled  = !hasResults;
 }
 
-/* =========================================================
-   Thread + messaging with backend
-   ========================================================= */
-
-// Start a new OpenAI thread (server call)
 async function startThread() {
     const response = await fetch('/start_thread', { method: 'POST' });
     const data = await response.json();
     thread_id = data.thread_id;
 }
 
-// Send user message to backend
 async function sendMessage() {
     const userInput = document.getElementById('user-input').value.trim();
     if (userInput === "") return;
@@ -241,7 +196,6 @@ async function sendMessage() {
         hideLoader();
         clearTimeout(timeoutHandle);
 
-        // Agenda type response
         if (data.response && data.response.type === 'agenda') {
             if (data.response.url) {
                 displayAssistantMessage(`<a href="${data.response.url}" target="_blank">${data.response.url}</a>`);
@@ -255,7 +209,6 @@ async function sendMessage() {
             return;
         }
 
-        // Plain response (no results)
         if (!data.response?.results) {
             displayAssistantMessage(data.response);
         }
@@ -264,7 +217,6 @@ async function sendMessage() {
             thread_id = data.thread_id;
         }
 
-        // Book search results
         if (data.response?.results) {
             previousResults = data.response.results;
             displaySearchResults(previousResults);
@@ -279,17 +231,13 @@ async function sendMessage() {
     checkInput();
     scrollToBottom();
 }
-/* =========================================================
-   Reset / status handling
-   ========================================================= */
 
-// Reset entire conversation thread
 function resetThread() {
     startThread();
     document.getElementById('messages').innerHTML = '';
     document.getElementById('search-results').innerHTML = '';
-    document.getElementById('breadcrumbs').innerHTML = 'results';
-    document.getElementById('user-input').placeholder = "What book are you searching for? Or info about..?";
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
     addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
@@ -298,7 +246,6 @@ function resetThread() {
     updateActionButtons();
 }
 
-// Notify backend that status is complete
 async function sendStatusKlaar() {
     try {
         const response = await fetch('/send_message', {
@@ -316,11 +263,6 @@ async function sendStatusKlaar() {
     } catch (error) {}
 }
 
-/* =========================================================
-   Rendering messages + results
-   ========================================================= */
-
-// Show user message in chat
 function displayUserMessage(message) {
     const messageContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
@@ -330,7 +272,6 @@ function displayUserMessage(message) {
     scrollToBottom();
 }
 
-// Show assistant message in chat
 function displayAssistantMessage(message) {
     const messageContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
@@ -344,7 +285,6 @@ function displayAssistantMessage(message) {
     scrollToBottom();
 }
 
-// Show search results (books grid)
 function displaySearchResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
     searchResultsContainer.classList.remove('agenda-list');
@@ -369,7 +309,6 @@ function displaySearchResults(results) {
     updateActionButtons();
 }
 
-// Show agenda results (events list)
 function displayAgendaResults(results) {
     const searchResultsContainer = document.getElementById('search-results');
     searchResultsContainer.innerHTML = '';
@@ -380,7 +319,7 @@ function displayAgendaResults(results) {
     const limitedResults = results.slice(0, maxItems);
 
     limitedResults.forEach(result => {
-        let formattedDate = result.date || 'Date not available';
+        let formattedDate = result.date || 'Datum niet beschikbaar';
         let formattedTime = result.time || '';
 
         if ((!formattedDate || !formattedTime) && result.raw_date && result.raw_date.start) {
@@ -393,9 +332,9 @@ function displayAgendaResults(results) {
             formattedTime = (formattedTime ? (formattedTime + ' - ') : '') + endDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
         }
 
-        const location = result.location || 'Location not available';
-        const title = result.title || 'No title available';
-        const summary = result.summary || 'No description available';
+        const location = result.location || 'Locatie niet beschikbaar';
+        const title = result.title || 'Geen titel beschikbaar';
+        const summary = result.summary || 'Geen beschrijving beschikbaar';
         const coverImage = result.cover || '';
         const link = result.link || '#';
 
@@ -419,7 +358,7 @@ function displayAgendaResults(results) {
     if (results.length > maxItems) {
         const moreButton = document.createElement('button');
         moreButton.classList.add('more-button');
-        moreButton.innerHTML = 'More';
+        moreButton.innerHTML = 'Meer';
         moreButton.onclick = () => {
             const url = results[0].link || '#';
             window.open(url, '_blank');
@@ -431,7 +370,6 @@ function displayAgendaResults(results) {
     updateActionButtons();
 }
 
-// Update result badge (bubble with count)
 function updateResultsBadge(count) {
     const badge = document.getElementById('results-badge');
     const btn = document.getElementById('open-results-btn');
@@ -448,11 +386,6 @@ function updateResultsBadge(count) {
     }
 }
 
-/* =========================================================
-   Detail view handling
-   ========================================================= */
-
-// Show agenda detail (event view)
 function showAgendaDetail(result) {
     const detailContainer = document.getElementById('detail-container');
     detailContainer.innerHTML = `
@@ -461,7 +394,7 @@ function showAgendaDetail(result) {
             <div class="detail-summary">
                 <h3>${result.title}</h3>
                 <div class="detail-buttons">
-                    <button onclick="window.open('${result.link}', '_blank')">View on OBA.nl</button>
+                    <button onclick="window.open('${result.link}', '_blank')">Bekijk op OBA.nl</button>
                 </div>
             </div>
         </div>
@@ -469,7 +402,6 @@ function showAgendaDetail(result) {
     detailContainer.style.display = 'flex';
 }
 
-// Fetch and display detail page for a specific PPN (book)
 async function fetchAndShowDetailPage(ppn) {
     try {
         const resolverResponse = await fetch(`/proxy/resolver?ppn=${ppn}`);
@@ -487,8 +419,8 @@ async function fetchAndShowDetailPage(ppn) {
         if (contentType && contentType.indexOf("application/json") !== -1) {
             const detailJson = await detailResponse.json();
 
-            const title = detailJson.record.titles[0] || 'Title not available';
-            const summary = detailJson.record.summaries[0] || 'Summary not available';
+            const title = detailJson.record.titles[0] || 'Titel niet beschikbaar';
+            const summary = detailJson.record.summaries[0] || 'Samenvatting niet beschikbaar';
             const coverImage = detailJson.record.coverimages[0] || '';
 
             const detailContainer = document.getElementById('detail-container');
@@ -503,9 +435,9 @@ async function fetchAndShowDetailPage(ppn) {
                     <div class="detail-summary">
                         <p>${summary}</p>
                         <div class="detail-buttons">
-                            <button onclick="goBackToResults()">Back</button>
-                            <button onclick="window.open('https://oba.nl/nl/collectie/oba-collectie?id=' + encodeURIComponent('|oba-catalogus|' + '${itemId}'), '_blank')">More info on OBA.nl</button>
-                            <button onclick="window.open('https://iguana.oba.nl/iguana/www.main.cls?sUrl=search&theme=OBA#app=Reserve&ppn=${ppn}', '_blank')">Reserve</button>
+                            <button onclick="goBackToResults()">Terug</button>
+                            <button onclick="window.open('https://oba.nl/nl/collectie/oba-collectie?id=' + encodeURIComponent('|oba-catalogus|' + '${itemId}'), '_blank')">Meer informatie op OBA.nl</button>
+                            <button onclick="window.open('https://iguana.oba.nl/iguana/www.main.cls?sUrl=search&theme=OBA#app=Reserve&ppn=${ppn}', '_blank')">Reserveer</button>
                         </div>
                     </div>
                 </div>
@@ -513,7 +445,7 @@ async function fetchAndShowDetailPage(ppn) {
 
             const currentUrl = window.location.href.split('?')[0];
             const breadcrumbs = document.getElementById('breadcrumbs');
-            breadcrumbs.innerHTML = `<a href="#" onclick="goBackToResults()">results</a> > <span class="breadcrumb-title"><a href="${currentUrl}?ppn=${ppn}" target="_blank">${title}</a></span>`;
+            breadcrumbs.innerHTML = `<a href="#" onclick="goBackToResults()">resultaten</a> > <span class="breadcrumb-title"><a href="${currentUrl}?ppn=${ppn}" target="_blank">${title}</a></span>`;
             
             if (!linkedPPNs.has(ppn)) {
                 sendDetailPageLinkToUser(title, currentUrl, ppn);
@@ -522,11 +454,10 @@ async function fetchAndShowDetailPage(ppn) {
             throw new Error('Unexpected response content type');
         }
     } catch (error) {
-        displayAssistantMessage('Something went wrong while fetching the detail page.');
+        displayAssistantMessage('Er is iets misgegaan bij het ophalen van de detailpagina.');
     }
 }
 
-// Return to results from detail view
 function goBackToResults() {
     const detailContainer = document.getElementById('detail-container');
     const searchResultsContainer = document.getElementById('search-results');
@@ -536,18 +467,13 @@ function goBackToResults() {
     document.getElementById('breadcrumbs').innerHTML = '';
 }
 
-// Send link of detail page to chat
 function sendDetailPageLinkToUser(title, baseUrl, ppn) {
     if (linkedPPNs.has(ppn)) return;
-    const message = `Title: <a href="#" onclick="fetchAndShowDetailPage('${ppn}'); return false;">${title}</a>`;
+    const message = `Titel: <a href="#" onclick="fetchAndShowDetailPage('${ppn}'); return false;">${title}</a>`;
     displayAssistantMessage(message);
     linkedPPNs.add(ppn);
 }
-/* =========================================================
-   Filters handling
-   ========================================================= */
 
-// Apply filters and trigger search
 async function applyFiltersAndSend() {
     const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
     let selectedFilters = [];
@@ -559,7 +485,7 @@ async function applyFiltersAndSend() {
     const filterString = selectedFilters.join('||');
     if (filterString === "") return;
 
-    displayUserMessage(`Filters applied: ${filterString}`);
+    displayUserMessage(`Filters toegepast: ${filterString}`);
     showLoader();
 
     document.getElementById('search-results').style.display = 'grid';
@@ -608,18 +534,75 @@ async function applyFiltersAndSend() {
     checkInput();
 }
 
-// Clear filter checkboxes
+function startNewChat() {
+    startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('detail-container').style.display = 'none';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
+    addOpeningMessage();
+    addPlaceholders();
+    scrollToBottom();
+    resetFilters();
+    linkedPPNs.clear();
+    updateActionButtons();
+}
+
+async function startHelpThread() {
+    await startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    resetFilters();
+    linkedPPNs.clear();
+    addPlaceholders();
+    addOpeningMessage();
+    const userMessage = "help";
+    displayUserMessage(userMessage);
+    await sendHelpMessage(userMessage);
+}
+
+async function sendHelpMessage(message) {
+    showLoader();
+    try {
+        const response = await fetch('/send_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: thread_id,
+                user_input: message,
+                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
+            })
+        });
+        if (!response.ok) {
+            throw new Error('Het verzenden van het help-bericht is mislukt.');
+        }
+        const data = await response.json();
+        hideLoader();
+        if (data.response) {
+            displayAssistantMessage(data.response);
+        }
+    } catch (error) {
+        hideLoader();
+        displayAssistantMessage('Er is iets misgegaan. Probeer opnieuw.');
+    }
+}
+
+function extractSearchQuery(response) {
+    const searchMarker = "SEARCH_QUERY:";
+    if (response.includes(searchMarker)) {
+        return response.split(searchMarker)[1].trim();
+    }
+    return null;
+}
+
 function resetFilters() {
     const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
     checkboxes.forEach(checkbox => { checkbox.checked = false; });
     checkInput();
 }
 
-/* =========================================================
-   Loader (typing indicator)
-   ========================================================= */
-
-// Show loader animation while waiting for response
 function showLoader() {
     const messageContainer = document.getElementById('messages');
     const loaderElement = document.createElement('div');
@@ -630,7 +613,6 @@ function showLoader() {
     scrollToBottom();
 }
 
-// Hide loader
 function hideLoader() {
     const loaderElement = document.getElementById('loader');
     if (loaderElement) { loaderElement.remove(); }
@@ -640,19 +622,13 @@ function hideLoader() {
     sendButton.style.cursor = "pointer";
 }
 
-/* =========================================================
-   Chat utilities
-   ========================================================= */
-
-// Auto-scroll chat to bottom
 function scrollToBottom() {
     const messageContainer = document.getElementById('messages');
     messageContainer.scrollTop = messageContainer.scrollHeight;
 }
 
-// Add opening message to chat
 function addOpeningMessage() {
-    const openingMessage = "Hi! I’m Nexi, I’ll help you search for books and information in the OBA. For example: 'books like World Spies' or 'do you have information about sea mammals?'";
+    const openingMessage = "Hoi! Ik ben Nexi, ik help je zoeken naar boeken en informatie in de OBA. Bijvoorbeeld: 'boeken die lijken op Wereldspionnen' of 'heb je informatie over zeezoogdieren?'";
     const messageContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
     messageElement.classList.add('assistant-message');
@@ -661,7 +637,6 @@ function addOpeningMessage() {
     scrollToBottom();
 }
 
-// Add placeholder covers in results
 function addPlaceholders() {
     const searchResultsContainer = document.getElementById('search-results');
     searchResultsContainer.innerHTML = `
@@ -672,9 +647,8 @@ function addPlaceholders() {
     `;
 }
 
-// Show error message and reset state
 function showErrorMessage() {
-    displayAssistantMessage('Something went wrong, restarting...');
+    displayAssistantMessage('er is iets misgegaan, we beginnen opnieuw');
     hideLoader();
     clearTimeout(timeoutHandle);
     resetThread();
@@ -682,20 +656,15 @@ function showErrorMessage() {
     setTimeout(() => { clearErrorMessage(); }, 2000);
 }
 
-// Clear error message
 function clearErrorMessage() {
     const messageContainer = document.getElementById('messages');
     const lastMessage = messageContainer.lastChild;
-    if (lastMessage && lastMessage.textContent.includes('Something went wrong')) {
+    if (lastMessage && lastMessage.textContent.includes('er is iets misgegaan')) {
         messageContainer.removeChild(lastMessage);
     }
 }
 
-/* =========================================================
-   Initialization
-   ========================================================= */
-
-// Event listeners for input + filters
+/* Init */
 document.getElementById('user-input').addEventListener('input', function() {
     checkInput();
     if (this.value !== "") this.placeholder = "";
@@ -707,13 +676,12 @@ document.querySelectorAll('#filters input[type="checkbox"]').forEach(checkbox =>
     checkbox.addEventListener('change', checkInput);
 });
 
-// Initial setup when page loads
 window.onload = async () => {
     await startThread();
     addOpeningMessage();
     addPlaceholders();
     checkInput();
-    document.getElementById('user-input').placeholder = "Tell me what you are looking for!";
+    document.getElementById('user-input').placeholder = "Vertel me wat je zoekt!";
     const applyFiltersButton = document.querySelector('button[onclick="applyFiltersAndSend()"]');
     if (applyFiltersButton) applyFiltersButton.onclick = applyFiltersAndSend;
     resetFilters();
@@ -723,4 +691,3 @@ window.onload = async () => {
     if (!history.state) history.replaceState({ panel: 'chat' }, '', location.pathname);
     updateActionButtons();
 };
-
