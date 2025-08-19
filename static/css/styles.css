@@ -1,6 +1,4 @@
-/* =========================================================
-   Fonts
-   ========================================================= */
+/* Fonts */
 @font-face {
     font-family: 'Avenir Black';
     src: url('/static/fonts/AvenirBlack.ttf') format('truetype');
@@ -10,9 +8,7 @@
     src: url('/static/fonts/AvenirLight.ttf') format('truetype');
 }
 
-/* =========================================================
-   Base layout
-   ========================================================= */
+/* Basis layout */
 body {
     font-family: 'Avenir Light', Arial, sans-serif;
     display: flex;
@@ -36,9 +32,7 @@ body {
     box-sizing: border-box;
 }
 
-/* =========================================================
-   Chat section
-   ========================================================= */
+/* Chat */
 #chat-section {
     flex: 1.7;
     display: flex;
@@ -75,9 +69,7 @@ body {
     height: 48px;
 }
 
-/* =========================================================
-   Buttons (general + variations)
-   ========================================================= */
+/* Buttons */
 button {
     padding: 10px;
     border: none;
@@ -119,9 +111,7 @@ button:disabled {
 #send-button .button-icon { width: 24px; height: 24px; }
 #apply-filters-button { width: 100%; }
 
-/* =========================================================
-   Filters panel
-   ========================================================= */
+/* Filters */
 #filter-section {
     flex: 1;
     display: flex;
@@ -143,13 +133,11 @@ button:disabled {
 #nexi-logo {
     height: 40px;
     position: absolute;
-    bottom: 10px;   /* Desktop placement: bottom right */
+    bottom: 10px;
     right: 10px;
 }
 
-/* =========================================================
-   Results section
-   ========================================================= */
+/* Resultaten */
 #result-section {
     flex: 4;
     display: flex;
@@ -180,9 +168,7 @@ button:disabled {
     align-items: center;
 }
 
-/* =========================================================
-   Book item
-   ========================================================= */
+/* Boek item */
 .search-result {
     width: 150px;
     height: 250px;
@@ -208,9 +194,7 @@ button:disabled {
     cursor: pointer;
 }
 
-/* =========================================================
-   Agenda item
-   ========================================================= */
+/* Agenda item */
 .agenda-card {
     display: flex;
     align-items: flex-start;
@@ -253,9 +237,7 @@ button:disabled {
     -webkit-box-orient: vertical;
 }
 
-/* =========================================================
-   Detail view
-   ========================================================= */
+/* Detailview */
 #detail-container {
     display: none;
     flex-direction: column;
@@ -290,9 +272,7 @@ button:disabled {
 }
 .detail-buttons button:hover { background-color: #574796; }
 
-/* =========================================================
-   Messages
-   ========================================================= */
+/* Messages */
 .user-message, .assistant-message {
     max-width: 75%;
     padding: 10px;
@@ -314,9 +294,7 @@ button:disabled {
     align-self: flex-start;
 }
 
-/* =========================================================
-   Breadcrumbs
-   ========================================================= */
+/* BreadCrumbs */
 #breadcrumbs {
     font-family: 'Avenir Light', Arial, sans-serif;
     margin-bottom: 10px;
@@ -325,9 +303,7 @@ button:disabled {
 #breadcrumbs a:hover { text-decoration: underline; }
 .breadcrumb-title { font-family: 'Avenir Light', Arial, sans-serif; }
 
-/* =========================================================
-   Scrollbars
-   ========================================================= */
+/* Scrollbars */
 #search-results::-webkit-scrollbar,
 #messages::-webkit-scrollbar { width: 12px; }
 #search-results::-webkit-scrollbar-track,
@@ -339,9 +315,7 @@ button:disabled {
     border: 3px solid white;
 }
 
-/* =========================================================
-   Loader (typing dots)
-   ========================================================= */
+/* Loader */
 .loader { display: flex; align-items: center; justify-content: center; }
 .loader .dot { font-size: 24px; margin: 0 2px; animation: blink 1.4s infinite both; }
 .loader .dot:nth-child(1) { animation-delay: 0s; }
@@ -349,9 +323,7 @@ button:disabled {
 .loader .dot:nth-child(3) { animation-delay: 0.4s; }
 @keyframes blink { 0%{opacity:.2} 20%{opacity:1} 100%{opacity:.2} }
 
-/* =========================================================
-   Mobile actions + badge (results/filters buttons)
-   ========================================================= */
+/* Mobiele acties en badge */
 #mobile-actions {
     display: none;
     position: absolute; 
@@ -407,13 +379,10 @@ button:disabled {
     transition: transform 0.3s ease;
 }
 
-/* =========================================================
-   Responsive: Mobile overrides
-   ========================================================= */
+/* Mobiel */
 @media (max-width: 768px) {
     html, body { height: 100%; margin: 0; }
     body { height: 100dvh; overflow: hidden; }
-
     #app-container {
         width: 100%;
         height: 100dvh;
@@ -425,6 +394,27 @@ button:disabled {
         flex: 1;
         height: 100%;
         border-radius: 0;
+    }
+    /* Logo linksboven */
+    #mobile-logo {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        height: 32px;
+        z-index: 1002;
+    }
+    /* Actieknoppen rechtsboven */
+    #mobile-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    /* Messages onder header */
+    #messages {
+        margin-top: 60px;
     }
     #result-section, #filter-section {
         position: fixed;
@@ -444,33 +434,18 @@ button:disabled {
     #result-section.open, #filter-section.open { transform: translateX(0); }
     #result-section.open .mobile-back-chat,
     #filter-section.open .mobile-back-chat { display: inline-flex; }
-
     body.panel-open #panel-overlay {
         opacity: 1;
         visibility: visible;
     }
     #new-chat-button, #help-button { display: none; }
-    #mobile-actions { display: inline-flex; }
-
-    /* Mobile grid adjustment */
     .book-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .search-result { width: 45vw; height: auto; }
     .book-cover { width: 100%; height: auto; }
-
     #search-results { height: calc(100dvh - 140px); }
-
-    /* Mobile logo (top left in chat) */
-    #mobile-logo {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        height: 40px;
-    }
 }
 
-/* =========================================================
-   Overlay (behind panels)
-   ========================================================= */
+/* Overlay */
 #panel-overlay {
     position: fixed;
     inset: 0;
