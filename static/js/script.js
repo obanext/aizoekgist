@@ -568,8 +568,7 @@ async function applyFiltersAndSend() {
             document.getElementById('filter-section').classList.remove('open');
             document.getElementById('result-section').classList.remove('open');
             document.body.classList.remove('panel-open');
-
-            history.pushState({ panel: 'chat' }, '', location.pathname);
+            history.replaceState({ panel: 'chat' }, '', location.pathname);
             updateActionButtons();
         }
 
@@ -579,7 +578,6 @@ async function applyFiltersAndSend() {
 
     checkInput();
 }
-
 
 function startNewChat() {
     startThread();
