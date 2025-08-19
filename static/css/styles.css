@@ -1,5 +1,3 @@
-/* styles.css */
-
 /* Fonts */
 @font-face {
     font-family: 'Avenir Black';
@@ -132,12 +130,14 @@ button:disabled {
     display: block;
     font-family: 'Avenir Light', Arial, sans-serif;
 }
+/* Desktop logo */
 #nexi-logo {
     height: 40px;
     position: absolute;
     bottom: 10px;
     right: 10px;
 }
+/* Mobile logo */
 #mobile-logo {
     display: none;
 }
@@ -277,7 +277,7 @@ button:disabled {
 }
 .detail-buttons button:hover { background-color: #574796; }
 
-/* Messages (bubbles) */
+/* Messages */
 .user-message, .assistant-message {
     max-width: 75%;
     padding: 10px;
@@ -299,7 +299,7 @@ button:disabled {
     align-self: flex-start;
 }
 
-/* Breadcrumbs */
+/* BreadCrumbs */
 #breadcrumbs {
     font-family: 'Avenir Light', Arial, sans-serif;
     margin-bottom: 10px;
@@ -384,7 +384,7 @@ button:disabled {
     transition: transform 0.3s ease;
 }
 
-/* Mobile-specific overrides */
+/* Mobile */
 @media (max-width: 768px) {
     html, body { height: 100%; margin: 0; }
     body { height: 100dvh; overflow: hidden; }
@@ -400,6 +400,9 @@ button:disabled {
         height: 100%;
         border-radius: 0;
     }
+    #messages {
+        margin-top: 60px; /* push under logo+buttons */
+    }
     #result-section, #filter-section {
         position: fixed;
         top: 0; right: 0;
@@ -411,25 +414,23 @@ button:disabled {
         transition: transform 300ms ease;
         border: none;
         border-radius: 0;
-        padding-top: 50px;
+        padding-top: 60px; /* space below header */
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
     #result-section.open, #filter-section.open { transform: translateX(0); }
-    #result-section.open .mobile-back-chat,
-    #filter-section.open .mobile-back-chat { display: inline-flex; }
     body.panel-open #panel-overlay {
         opacity: 1;
         visibility: visible;
     }
     #new-chat-button, #help-button { display: none; }
     #mobile-actions { display: inline-flex; }
-    #nexi-logo { display: none; }
-    #mobile-logo { display: block; position: absolute; top: 10px; left: 10px; height: 24px; }
     .book-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .search-result { width: 45vw; height: auto; }
     .book-cover { width: 100%; height: auto; }
     #search-results { height: calc(100dvh - 140px); }
+    #mobile-logo { display: block; }
+    #nexi-logo { display: none; }
 }
 
 /* Overlay */
