@@ -564,10 +564,11 @@ async function applyFiltersAndSend() {
 
         resetFilters();
 
-        // ✅ Alleen mobiel → terug naar chat
-        if (window.innerWidth <= 768) {
-            closeFilterPanel(true);
-        }
+       if (window.innerWidth <= 768) {
+    closeFilterPanel(false); 
+    history.replaceState({ panel: 'chat' }, '', location.pathname); 
+    updateActionButtons();
+}
 
     } catch (error) {
         hideLoader();
