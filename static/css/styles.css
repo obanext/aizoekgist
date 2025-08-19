@@ -455,3 +455,7 @@ button:disabled {
     transition: opacity 200ms ease;
     z-index: 999;
 }
+
+#back-chat-btn {
+    display: none; /* standaard verborgen */
+}
