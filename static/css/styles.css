@@ -391,6 +391,25 @@ button:disabled {
     transition: transform 0.3s ease;
 }
 
+/* Overlay */
+#panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 200ms ease;
+    z-index: 999;
+}
+
+/* Specifieke volgorde knoppen */
+#back-chat-btn {
+    display: none; /* standaard verborgen */
+    order: 1;
+}
+#open-results-btn { order: 2; }
+#open-filters-btn { order: 3; }
+
 /* Mobiel */
 @media (max-width: 768px) {
     html, body { height: 100%; margin: 0; }
@@ -443,19 +462,4 @@ button:disabled {
     .search-result { width: 45vw; height: auto; }
     .book-cover { width: 100%; height: auto; }
     #search-results { height: calc(100dvh - 140px); }
-}
-
-/* Overlay */
-#panel-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.35);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 200ms ease;
-    z-index: 999;
-}
-
-#back-chat-btn {
-    display: none; /* standaard verborgen */
 }
