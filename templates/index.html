@@ -9,22 +9,17 @@
 <body>
     <div id="app-container">
         <img id="app-logo" src="/static/images/nexthybride.png" alt="Nexi logo">
-        <!-- Mobiele actieknoppen -->
-        <div id="mobile-actions">
-                <button class="icon-btn" id="open-results-btn" aria-label="Resultaten" onclick="openResultPanel()">
-                    <img src="/static/images/results.svg" alt="Resultaten" class="button-icon" />
-                    <span id="results-badge" class="badge" style="display:none;"></span>
-                </button>
-                <button class="icon-btn" id="open-filters-btn" aria-label="Filters" onclick="openFilterPanel()">
-                    <img src="/static/images/filter.svg" alt="Filters" class="button-icon" />
-                </button>
-    <!-- Chatknop voor mobiel -->
-    <button class="icon-btn" id="chat-toggle-btn" aria-label="Chat" onclick="closeAnyPanel()">
-        <img src="/static/images/loep.svg" alt="Chat" class="button-icon" />
-    </button>
-</div>
 
-        <!-- Chatsectie -->
+        <div id="mobile-actions">
+            <button class="icon-btn" id="open-results-btn" aria-label="Resultaten" onclick="openResultPanel()">
+                <img src="/static/images/results.svg" alt="Resultaten" class="button-icon" />
+                <span id="results-badge" class="badge" style="display:none;"></span>
+            </button>
+            <button class="icon-btn" id="open-filters-btn" aria-label="Filters" onclick="openFilterPanel()">
+                <img src="/static/images/filter.svg" alt="Filters" class="button-icon" />
+            </button>
+        </div>
+
         <div id="chat-section">
             <div id="chat-header">
                 <button id="new-chat-button" onclick="startNewChat()">
@@ -44,9 +39,7 @@
             </div>
         </div>
 
-        <!-- Resultaten -->
         <div id="result-section" aria-hidden="true" aria-modal="true" role="dialog">
-            <button class="mobile-back-chat" onclick="closeResultPanel()">chat</button>
             <h2 id="breadcrumbs">resultaten</h2>
             <div id="search-results">
                 <div><img src="/static/images/placeholder.png" alt="Placeholder"></div>
@@ -57,9 +50,7 @@
             <div id="detail-container"></div>
         </div>
 
-        <!-- Filters -->
         <div id="filter-section" aria-hidden="true" aria-modal="true" role="dialog">
-            <button class="mobile-back-chat" onclick="closeFilterPanel()">chat</button>
             <h2>filters</h2>
             <div id="filters">
                 <div id="filter-options">
@@ -82,7 +73,6 @@
         </div>
     </div>
 
-    <!-- Overlay -->
     <div id="panel-overlay" onclick="closeAnyPanel()"></div>
 
     <script src="/static/js/script.js"></script>
