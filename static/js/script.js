@@ -10,43 +10,64 @@ function openFilterPanel(pushHistory = true) {
     other.classList.remove('open');
     panel.classList.add('open');
     document.body.classList.add('panel-open');
+    updateChatToggleButton();
     if (pushHistory) history.pushState({ panel: 'filters' }, '', '#filters');
 }
+
 function closeFilterPanel(useHistoryBack = false) {
     const panel = document.getElementById('filter-section');
     panel.classList.remove('open');
     if (!document.getElementById('result-section').classList.contains('open')) {
         document.body.classList.remove('panel-open');
     }
+    updateChatToggleButton();
     if (useHistoryBack && history.state && history.state.panel === 'filters') {
         history.back();
     }
 }
+
 function openResultPanel(pushHistory = true) {
     const panel = document.getElementById('result-section');
     const other = document.getElementById('filter-section');
     other.classList.remove('open');
     panel.classList.add('open');
     document.body.classList.add('panel-open');
+    updateChatToggleButton();
     if (pushHistory) history.pushState({ panel: 'results' }, '', '#results');
 }
+
 function closeResultPanel(useHistoryBack = false) {
     const panel = document.getElementById('result-section');
     panel.classList.remove('open');
     if (!document.getElementById('filter-section').classList.contains('open')) {
         document.body.classList.remove('panel-open');
     }
+    updateChatToggleButton();
     if (useHistoryBack && history.state && history.state.panel === 'results') {
         history.back();
     }
 }
+
 function closeAnyPanel() {
     const hasOpen = document.getElementById('filter-section').classList.contains('open') ||
                     document.getElementById('result-section').classList.contains('open');
     closeFilterPanel();
     closeResultPanel();
+    updateChatToggleButton();
     if (hasOpen && history.state && history.state.panel) {
         history.back();
+    }
+}
+
+function updateChatToggleButton() {
+    const chatBtn = document.getElementById('chat-toggle-btn');
+    const resultOpen = document.getElementById('result-section').classList.contains('open');
+    const filterOpen = document.getElementById('filter-section').classList.contains('open');
+
+    if (resultOpen || filterOpen) {
+        chatBtn.style.display = 'inline-flex';
+    } else {
+        chatBtn.style.display = 'none';
     }
 }
 
@@ -68,6 +89,7 @@ function closeAnyPanel() {
             closeResultPanel();
             document.body.classList.remove('panel-open');
         }
+        updateChatToggleButton();
     });
 })();
 
