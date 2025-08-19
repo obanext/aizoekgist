@@ -333,13 +333,11 @@ button:disabled {
     z-index: 1002;
     pointer-events: auto;
 }
-
 #mobile-actions .button-icon {
     width: 24px;
     height: 24px;
     object-fit: contain;
 }
-
 .icon-btn {
     position: relative;
     background: white;
@@ -352,14 +350,11 @@ button:disabled {
     align-items: center;
     justify-content: center;
 }
-
 .icon-btn:disabled {
     background-color: #ccc;
     border-color: #ccc;
     cursor: not-allowed;
 }
-
-
 .icon-btn:not(:disabled) {
     background-color: #6d5ab0;
     border-color: #6d5ab0;
@@ -400,6 +395,27 @@ button:disabled {
         height: 100%;
         border-radius: 0;
     }
+    /* Logo linksboven */
+    #mobile-logo {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        height: 32px;
+        z-index: 1002;
+    }
+    /* Actieknoppen rechtsboven */
+    #mobile-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    /* Messages onder header */
+    #messages {
+        margin-top: 60px;
+    }
     #result-section, #filter-section {
         position: fixed;
         top: 0; right: 0;
@@ -423,7 +439,6 @@ button:disabled {
         visibility: visible;
     }
     #new-chat-button, #help-button { display: none; }
-    #mobile-actions { display: inline-flex; }
     .book-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .search-result { width: 45vw; height: auto; }
     .book-cover { width: 100%; height: auto; }
