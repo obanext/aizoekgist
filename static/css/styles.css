@@ -1,6 +1,6 @@
-/* ----------------------------------------
-   Fonts
----------------------------------------- */
+/* styles.css */
+
+/* Fonts */
 @font-face {
     font-family: 'Avenir Black';
     src: url('/static/fonts/AvenirBlack.ttf') format('truetype');
@@ -10,9 +10,7 @@
     src: url('/static/fonts/AvenirLight.ttf') format('truetype');
 }
 
-/* ----------------------------------------
-   Base layout
----------------------------------------- */
+/* Base layout */
 body {
     font-family: 'Avenir Light', Arial, sans-serif;
     display: flex;
@@ -36,16 +34,13 @@ body {
     box-sizing: border-box;
 }
 
-/* ----------------------------------------
-   Chat section
----------------------------------------- */
+/* Chat */
 #chat-section {
     flex: 1.7;
     display: flex;
     flex-direction: column;
     border: 1px solid #ccc;
     border-radius: 10px;
-    position: relative;
 }
 #chat-header {
     display: flex;
@@ -76,9 +71,7 @@ body {
     height: 48px;
 }
 
-/* ----------------------------------------
-   Buttons
----------------------------------------- */
+/* Buttons */
 button {
     padding: 10px;
     border: none;
@@ -120,9 +113,7 @@ button:disabled {
 #send-button .button-icon { width: 24px; height: 24px; }
 #apply-filters-button { width: 100%; }
 
-/* ----------------------------------------
-   Filter section (desktop)
----------------------------------------- */
+/* Filters */
 #filter-section {
     flex: 1;
     display: flex;
@@ -141,17 +132,17 @@ button:disabled {
     display: block;
     font-family: 'Avenir Light', Arial, sans-serif;
 }
-/* Desktop logo bottom-right */
 #nexi-logo {
     height: 40px;
     position: absolute;
     bottom: 10px;
     right: 10px;
 }
+#mobile-logo {
+    display: none;
+}
 
-/* ----------------------------------------
-   Results section
----------------------------------------- */
+/* Results */
 #result-section {
     flex: 4;
     display: flex;
@@ -182,11 +173,164 @@ button:disabled {
     align-items: center;
 }
 
-/* ----------------------------------------
-   Mobile action buttons + badge
----------------------------------------- */
+/* Book item */
+.search-result {
+    width: 150px;
+    height: 250px;
+    text-align: center;
+    cursor: pointer;
+}
+.book-cover {
+    width: 150px;
+    height: 200px;
+    object-fit: cover;
+    margin-bottom: 2px;
+}
+#search-results p {
+    color: black;
+    text-decoration: none;
+    width: 100%;
+    word-wrap: break-word;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+/* Agenda item */
+.agenda-card {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 720px;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.agenda-card-link {
+    display: flex;
+    text-decoration: none;
+    color: inherit;
+    width: 100%;
+}
+.agenda-card-image {
+    width: 200px;
+    height: 150px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.agenda-card-text {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    flex: 1;
+}
+.agenda-date { font-size: 13px; margin-bottom: 5px; color: #444; }
+.agenda-title { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #000; }
+.agenda-time, .agenda-location { font-size: 13px; margin-bottom: 4px; color: #666; }
+.agenda-summary {
+    font-size: 13px;
+    color: #333;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* Detailview */
+#detail-container {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+.detail-container {
+    display: flex;
+    align-items: flex-start;
+    margin-top: 20px;
+}
+.detail-cover {
+    width: 200px;
+    height: auto;
+    margin-right: 20px;
+}
+.detail-summary { flex: 1; }
+.detail-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    align-items: flex-end;
+}
+.detail-buttons button {
+    background-color: #6d5ab0;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    height: 48px;
+}
+.detail-buttons button:hover { background-color: #574796; }
+
+/* Messages (bubbles) */
+.user-message, .assistant-message {
+    max-width: 75%;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    display: inline-block;
+}
+.user-message {
+    background-color: white;
+    color: black;
+    border-bottom-right-radius: 0;
+    align-self: flex-end;
+}
+.assistant-message {
+    background-color: #f1f1f1;
+    color: black;
+    border-bottom-left-radius: 0;
+    align-self: flex-start;
+}
+
+/* Breadcrumbs */
+#breadcrumbs {
+    font-family: 'Avenir Light', Arial, sans-serif;
+    margin-bottom: 10px;
+}
+#breadcrumbs a { color: black; text-decoration: none; }
+#breadcrumbs a:hover { text-decoration: underline; }
+.breadcrumb-title { font-family: 'Avenir Light', Arial, sans-serif; }
+
+/* Scrollbars */
+#search-results::-webkit-scrollbar,
+#messages::-webkit-scrollbar { width: 12px; }
+#search-results::-webkit-scrollbar-track,
+#messages::-webkit-scrollbar-track { background: white; }
+#search-results::-webkit-scrollbar-thumb,
+#messages::-webkit-scrollbar-thumb {
+    background-color: #6d5ab0;
+    border-radius: 10px;
+    border: 3px solid white;
+}
+
+/* Loader */
+.loader { display: flex; align-items: center; justify-content: center; }
+.loader .dot { font-size: 24px; margin: 0 2px; animation: blink 1.4s infinite both; }
+.loader .dot:nth-child(1) { animation-delay: 0s; }
+.loader .dot:nth-child(2) { animation-delay: 0.2s; }
+.loader .dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%{opacity:.2} 20%{opacity:1} 100%{opacity:.2} }
+
+/* Mobile actions and badge */
 #mobile-actions {
-    display: none; /* hidden on desktop */
+    display: none;
     position: absolute; 
     top: 10px;
     right: 10px;
@@ -240,9 +384,7 @@ button:disabled {
     transition: transform 0.3s ease;
 }
 
-/* ----------------------------------------
-   Mobile overrides
----------------------------------------- */
+/* Mobile-specific overrides */
 @media (max-width: 768px) {
     html, body { height: 100%; margin: 0; }
     body { height: 100dvh; overflow: hidden; }
@@ -253,22 +395,11 @@ button:disabled {
         flex-direction: column;
     }
     #chat-section {
+        position: relative;
+        flex: 1;
+        height: 100%;
         border-radius: 0;
     }
-    /* Mobile logo top-left */
-    #mobile-logo {
-        display: block;
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        height: 32px;
-        z-index: 1002;
-    }
-    /* Show mobile action bar */
-    #mobile-actions { display: inline-flex; }
-    /* Messages move down under header */
-    #messages { margin-top: 60px; }
-    /* Slide-in panels */
     #result-section, #filter-section {
         position: fixed;
         top: 0; right: 0;
@@ -285,18 +416,23 @@ button:disabled {
         -webkit-overflow-scrolling: touch;
     }
     #result-section.open, #filter-section.open { transform: translateX(0); }
-    /* Hide desktop-only buttons */
-    #new-chat-button, #help-button, #nexi-logo { display: none; }
-    /* Grid adaptation */
+    #result-section.open .mobile-back-chat,
+    #filter-section.open .mobile-back-chat { display: inline-flex; }
+    body.panel-open #panel-overlay {
+        opacity: 1;
+        visibility: visible;
+    }
+    #new-chat-button, #help-button { display: none; }
+    #mobile-actions { display: inline-flex; }
+    #nexi-logo { display: none; }
+    #mobile-logo { display: block; position: absolute; top: 10px; left: 10px; height: 24px; }
     .book-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .search-result { width: 45vw; height: auto; }
     .book-cover { width: 100%; height: auto; }
     #search-results { height: calc(100dvh - 140px); }
 }
 
-/* ----------------------------------------
-   Overlay (mobile)
----------------------------------------- */
+/* Overlay */
 #panel-overlay {
     position: fixed;
     inset: 0;
@@ -305,8 +441,4 @@ button:disabled {
     visibility: hidden;
     transition: opacity 200ms ease;
     z-index: 999;
-}
-body.panel-open #panel-overlay {
-    opacity: 1;
-    visibility: visible;
 }
