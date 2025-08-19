@@ -562,8 +562,13 @@ async function applyFiltersAndSend() {
             thread_id = data.thread_id;
         }
 
-        closeFilterPanel(true);
         resetFilters();
+
+        // ✅ Alleen mobiel → terug naar chat
+        if (window.innerWidth <= 768) {
+            closeFilterPanel(true);
+        }
+
     } catch (error) {
         hideLoader();
     }
