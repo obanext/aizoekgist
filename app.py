@@ -1,5 +1,3 @@
-zo dus?
-
 let thread_id = null;
 let timeoutHandle = null;
 let previousResults = [];
