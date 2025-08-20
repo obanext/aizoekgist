@@ -262,8 +262,8 @@ def perform_typesense_search_faq(params):
     if not hits:
         return "Geen antwoord gevonden."
     doc = hits[0].get("document", {}) or {}
-    answer = doc.get("answer") or doc.get("content") or doc.get("text") or "Geen antwoord gevonden."
-    return answer
+    # FIX: pak veld 'antwoord'
+    return doc.get("antwoord", "Geen antwoord gevonden.")
 
 
 def fetch_event_detail(nativeid):
