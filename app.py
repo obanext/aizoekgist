@@ -207,9 +207,34 @@ def parse_assistant_message(content):
         logger.warning("parse_assistant_message_json_error")
         return None
 
-
 def perform_typesense_search(params):
     headers = {'Content-Type': 'application/json', 'X-TYPESENSE-API-KEY': typesense_api_key}
+
+    #obafaq
+    if params["collection"] == "obafaq":
+        body = {
+            "searches": [{
+                "q": params["q"],
+                "query_by": params["query_by"],
+                "collection": params["collection"],
+                "prefix": "false",
+                "vector_query": params["vector_query"],
+                "per_page": 1,   # alleen eerste antwoord
+                "filter_by": params["filter_by"]
+            }]
+        }
+        response = requests.post(typesense_api_url, headers=headers, json=body, timeout=15)
+        if response.status_code == 200:
+            data = response.json()
+            try:
+                doc = data["results"][0]["hits"][0]["document"]
+                return {"results": [{"antwoord": doc.get("antwoord", "")}], "type": "faq"}
+            except Exception:
+                return {"results": [], "type": "faq"}
+        else:
+            return {"error": response.status_code, "message": response.text, "type": "faq"}
+
+    #collectie
     body = {
         "searches": [{
             "q": params["q"],
@@ -221,17 +246,6 @@ def perform_typesense_search(params):
             "per_page": 15,
             "filter_by": params["filter_by"]
         }]}
-    logger.info(f"typesense_books_request collection={params.get('collection')} q_len={len(params.get('q',''))}")
-    response = requests.post(typesense_api_url, headers=headers, json=body, timeout=15)
-    logger.info(f"typesense_books_response status={response.status_code}")
-    if response.status_code == 200:
-        data = response.json()
-        hits = data["results"][0]["hits"]
-        logger.info(f"typesense_books_hits count={len(hits)}")
-        return {"results": [{"ppn": h["document"]["ppn"], "short_title": h["document"]["short_title"]} for h in hits]}
-    else:
-        logger.warning(f"typesense_books_error status={response.status_code}")
-        return {"error": response.status_code, "message": response.text}
 
 
 def perform_typesense_search_events(params):
