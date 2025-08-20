@@ -1,3 +1,4 @@
+
 let thread_id = null;
 let timeoutHandle = null;
 let previousResults = [];
@@ -248,6 +249,13 @@ async function sendMessage() {
             return;
         }
 
+        if (data.response?.type === 'faq') {
+            previousResults = data.response.results || [];
+            displayFaqResults(previousResults);
+            await sendStatusKlaar();
+            return;
+        }
+
         if (!data.response?.results) {
             console.log("Assistant Message:", data.response);
             displayAssistantMessage(data.response);
@@ -406,6 +414,22 @@ function displayAgendaResults(results) {
         };
         searchResultsContainer.appendChild(moreButton);
     }
+
+    updateResultsBadge(results.length);
+    updateActionButtons();
+}
+
+function displayFaqResults(results) {
+    const searchResultsContainer = document.getElementById('search-results');
+    searchResultsContainer.innerHTML = '';
+    searchResultsContainer.classList.remove('book-grid', 'agenda-list');
+
+    results.forEach(result => {
+        const el = document.createElement('div');
+        el.classList.add('faq-result');
+        el.innerHTML = `<p>${result.antwoord}</p>`;
+        searchResultsContainer.appendChild(el);
+    });
 
     updateResultsBadge(results.length);
     updateActionButtons();
