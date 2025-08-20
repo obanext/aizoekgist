@@ -201,6 +201,7 @@ async function startThread() {
 
 async function sendMessage() {
     const userInput = document.getElementById('user-input').value.trim();
+    console.log("User Input:", userInput);
     if (userInput === "") return;
 
     displayUserMessage(userInput);
@@ -230,6 +231,7 @@ async function sendMessage() {
             return;
         }
         const data = await response.json();
+        console.log("Backend Response:", data);
         hideLoader();
         clearTimeout(timeoutHandle);
 
@@ -247,6 +249,7 @@ async function sendMessage() {
         }
 
         if (!data.response?.results) {
+            console.log("Assistant Message:", data.response);
             displayAssistantMessage(data.response);
         }
 
@@ -255,6 +258,7 @@ async function sendMessage() {
         }
 
         if (data.response?.results) {
+            console.log("Assistant Message:", data.response);
             previousResults = data.response.results;
             displaySearchResults(previousResults);
             await sendStatusKlaar();
