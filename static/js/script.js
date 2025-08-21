@@ -191,6 +191,28 @@ function updateActionButtons() {
     }
 }
 
+async function loadFilterTemplate(type) {
+    let url = "";
+    if (type === "collection") url = "/static/html/filtercollectie.html";
+    if (type === "agenda") url = "/static/html/filteragenda.html";
+
+    if (!url) {
+        document.getElementById("filter-options").innerHTML = "";
+        return;
+    }
+
+    const res = await fetch(url);
+    const html = await res.text();
+    document.getElementById("filter-options").innerHTML = html;
+
+    document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', checkInput);
+    });
+    document.querySelectorAll('#filter-options select').forEach(sel => {
+        sel.addEventListener('change', checkInput);
+    });
+    checkInput();
+}
 
 
 async function startThread() {
@@ -201,7 +223,6 @@ async function startThread() {
 
 async function sendMessage() {
     const userInput = document.getElementById('user-input').value.trim();
-    console.log("User Input:", userInput);
     if (userInput === "") return;
 
     displayUserMessage(userInput);
@@ -231,23 +252,14 @@ async function sendMessage() {
             return;
         }
         const data = await response.json();
-        console.log("Backend Response:", data);
         hideLoader();
         clearTimeout(timeoutHandle);
 
-       if (data.response && data.response.type === 'agenda') {
-            if (data.response.url) {
-                displayAssistantMessage(
-                    `check wat ik gevonden heb! of <a href="${data.response.url}" target="_blank">bekijk het op OBA.nl</a>`
-            );
-        }
-        if (data.response.message) {
-            displayAssistantMessage(data.response.message);
-        }
-        previousResults = data.response.results || [];
-        displayAgendaResults(previousResults);
-        await sendStatusKlaar();
-        return;
+        if (data.response && data.response.type === 'agenda') {
+            previousResults = data.response.results || [];
+            displayAgendaResults(previousResults);
+            await loadFilterTemplate("agenda");
+            return; // geen STATUS:KLAAR hier
         }
 
         if (data.response?.type === 'faq') {
@@ -257,12 +269,11 @@ async function sendMessage() {
             } else {
                 displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
             }
-            await sendStatusKlaar();
+            document.getElementById("filter-options").innerHTML = "";
             return;
-    }
+        }
 
         if (!data.response?.results) {
-            console.log("Assistant Message:", data.response);
             displayAssistantMessage(data.response);
         }
 
@@ -271,10 +282,9 @@ async function sendMessage() {
         }
 
         if (data.response?.results) {
-            console.log("Assistant Message:", data.response);
             previousResults = data.response.results;
             displaySearchResults(previousResults);
-            await sendStatusKlaar();
+            await loadFilterTemplate("collection");
         }
 
         resetFilters();
@@ -285,6 +295,7 @@ async function sendMessage() {
     checkInput();
     scrollToBottom();
 }
+
 
 function resetThread() {
     startThread();
@@ -316,6 +327,7 @@ async function sendStatusKlaar() {
         scrollToBottom();
     } catch (error) {}
 }
+
 
 function displayUserMessage(message) {
     const messageContainer = document.getElementById('messages');
@@ -545,14 +557,30 @@ function sendDetailPageLinkToUser(title, baseUrl, ppn) {
 }
 
 async function applyFiltersAndSend() {
-    const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
-    let selectedFilters = [];
-    checkboxes.forEach(checkbox => {
-        if (checkbox.checked) {
-            selectedFilters.push(checkbox.value);
-        }
-    });
-    const filterString = selectedFilters.join('||');
+    let filterString = "";
+
+    const agendaLocation = document.getElementById("agenda-location");
+    if (agendaLocation) {
+        const location = agendaLocation.value;
+        const age = document.getElementById("agenda-age").value;
+        const date = document.getElementById("agenda-date").value;
+        const type = document.getElementById("agenda-type").value;
+
+        const selected = [];
+        if (location) selected.push(`Locatie: ${location}`);
+        if (age) selected.push(`Leeftijd: ${age}`);
+        if (date) selected.push(`Wanneer: ${date}`);
+        if (type) selected.push(`Type: ${type}`);
+        filterString = selected.join("||");
+    } else {
+        const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
+        const selected = [];
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) selected.push(checkbox.value);
+        });
+        filterString = selected.join("||");
+    }
+
     if (filterString === "") return;
 
     displayUserMessage(`Filters toegepast: ${filterString}`);
@@ -584,10 +612,12 @@ async function applyFiltersAndSend() {
         if (data.response && data.response.type === 'agenda') {
             previousResults = data.response.results || [];
             displayAgendaResults(previousResults);
+            await loadFilterTemplate("agenda");
             await sendStatusKlaar();
         } else if (data.results) {
             previousResults = data.results;
             displaySearchResults(previousResults);
+            await loadFilterTemplate("collection");
             await sendStatusKlaar();
         }
 
