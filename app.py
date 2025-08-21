@@ -534,19 +534,15 @@ def apply_filters():
         response_text, thread_id = call_assistant(assistant_id, filter_values, thread_id)
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
-        logger.info(f"apply_filters_paths search={bool(search_query)} compare={bool(comparison_query)}")
 
         if search_query:
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
             search_params = parse_assistant_message(response_text_2)
-            logger.info(f"apply_filters_params_present={bool(search_params)}")
             if search_params:
                 coll = search_params.get("collection")
-                logger.info(f"collection={coll}")
-                if coll == "obadbevents13825":  # <-- Pas aan indien je een andere events-collectie gebruikt
+                if coll == "obadbevents13825":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
-                    logger.info(f"agenda_results_count={len(agenda_results)}")
                     return jsonify({
                         'response': {
                             'type': 'agenda',
@@ -563,14 +559,11 @@ def apply_filters():
         elif comparison_query:
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
-            logger.info(f"apply_filters_compare_params_present={bool(search_params)}")
             if search_params:
                 coll = search_params.get("collection")
-                logger.info(f"collection={coll}")
-                if coll == "obadbevents13825":  # <-- Pas aan indien je een andere events-collectie gebruikt
+                if coll == "obadbevents13825":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
-                    logger.info(f"agenda_results_count={len(agenda_results)}")
                     return jsonify({
                         'response': {
                             'type': 'agenda',
@@ -584,7 +577,6 @@ def apply_filters():
                 return jsonify({'results': results.get('results', []), 'thread_id': thread_id})
             return jsonify({'response': response_text_3, 'thread_id': thread_id})
 
-        logger.info("apply_filters_fallback_text")
         return jsonify({'response': response_text, 'thread_id': thread_id})
 
     except Exception:
