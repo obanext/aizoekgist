@@ -250,8 +250,12 @@ async function sendMessage() {
         }
 
         if (data.response?.type === 'faq') {
-            previousResults = data.response.results || [];
-            displayFaqResults(previousResults);
+            const faqResults = data.response.results || [];
+            if (faqResults.length > 0) {
+                displayAssistantMessage(faqResults[0].antwoord);
+            } else {
+                displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
+            }
             await sendStatusKlaar();
             return;
         }
