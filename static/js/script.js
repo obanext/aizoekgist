@@ -1,4 +1,3 @@
-
 let thread_id = null;
 let timeoutHandle = null;
 let previousResults = [];
@@ -236,17 +235,19 @@ async function sendMessage() {
         hideLoader();
         clearTimeout(timeoutHandle);
 
-        if (data.response && data.response.type === 'agenda') {
+       if (data.response && data.response.type === 'agenda') {
             if (data.response.url) {
-                displayAssistantMessage(`<a href="${data.response.url}" target="_blank">${data.response.url}</a>`);
-            }
-            if (data.response.message) {
-                displayAssistantMessage(data.response.message);
-            }
-            previousResults = data.response.results || [];
-            displayAgendaResults(previousResults);
-            await sendStatusKlaar();
-            return;
+                displayAssistantMessage(
+                    `check wat ik gevonden heb! of <a href="${data.response.url}" target="_blank">bekijk het op OBA.nl</a>`
+            );
+        }
+        if (data.response.message) {
+            displayAssistantMessage(data.response.message);
+        }
+        previousResults = data.response.results || [];
+        displayAgendaResults(previousResults);
+        await sendStatusKlaar();
+        return;
         }
 
         if (data.response?.type === 'faq') {
@@ -258,7 +259,7 @@ async function sendMessage() {
             }
             await sendStatusKlaar();
             return;
-        }
+    }
 
         if (!data.response?.results) {
             console.log("Assistant Message:", data.response);
