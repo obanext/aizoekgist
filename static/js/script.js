@@ -144,21 +144,16 @@ function checkInput() {
     const userInput = document.getElementById('user-input').value.trim();
     const sendButton = document.getElementById('send-button');
     const applyFiltersButton = document.getElementById('apply-filters-button');
-
     const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
-    const selects = document.querySelectorAll('#filters select');
-
-    let anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-    let anySelected = Array.from(selects).some(sel => sel.value && sel.value !== "");
+    let anyChecked = Array.from(checkboxes).some(checkbox => checkbox.checked);
 
     sendButton.disabled = userInput === "";
     sendButton.style.backgroundColor = userInput === "" ? "#ccc" : "#6d5ab0";
     sendButton.style.cursor = userInput === "" ? "not-allowed" : "pointer";
 
-    const filtersActive = anyChecked || anySelected;
-    applyFiltersButton.disabled = !filtersActive;
-    applyFiltersButton.style.backgroundColor = filtersActive ? "#6d5ab0" : "#ccc";
-    applyFiltersButton.style.cursor = filtersActive ? "pointer" : "not-allowed";
+    applyFiltersButton.disabled = !anyChecked;
+    applyFiltersButton.style.backgroundColor = anyChecked ? "#6d5ab0" : "#ccc";
+    applyFiltersButton.style.cursor = anyChecked ? "pointer" : "not-allowed";
 }
 
 function updateActionButtons() {
@@ -176,22 +171,27 @@ function updateActionButtons() {
     backBtn.style.display = 'none';
 
     if (filterOpen) {
+        // filter open → toon loep (back) + results
         backBtn.style.display = 'inline-flex';
         backBtn.onclick = () => closeFilterPanel(true);
         resultsBtn.style.display = 'inline-flex';
         resultsBtn.disabled = !hasResults;
     } else if (resultOpen) {
+        // results open → toon loep (back) + filters
         backBtn.style.display = 'inline-flex';
         backBtn.onclick = () => closeResultPanel(true);
         filtersBtn.style.display = 'inline-flex';
         filtersBtn.disabled = !hasResults;
     } else {
+        // geen overlay → toon results + filters
         resultsBtn.disabled = !hasResults;
         filtersBtn.disabled = !hasResults;
         resultsBtn.style.display = 'inline-flex';
         filtersBtn.style.display = 'inline-flex';
     }
 }
+
+
 
 async function startThread() {
     const response = await fetch('/start_thread', { method: 'POST' });
@@ -199,31 +199,9 @@ async function startThread() {
     thread_id = data.thread_id;
 }
 
-async function loadFilterTemplate(type) {
-    let url = "";
-    if (type === "collection") url = "/static/html/filtercollectie.html";
-    if (type === "agenda") url = "/static/html/filteragenda.html";
-
-    if (!url) {
-        document.getElementById("filter-options").innerHTML = "";
-        return;
-    }
-
-    const res = await fetch(url);
-    const html = await res.text();
-    document.getElementById("filter-options").innerHTML = html;
-
-    document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', checkInput);
-    });
-    document.querySelectorAll('#filter-options select').forEach(sel => {
-        sel.addEventListener('change', checkInput);
-    });
-    checkInput();
-}
-
 async function sendMessage() {
     const userInput = document.getElementById('user-input').value.trim();
+    console.log("User Input:", userInput);
     if (userInput === "") return;
 
     displayUserMessage(userInput);
@@ -253,23 +231,23 @@ async function sendMessage() {
             return;
         }
         const data = await response.json();
+        console.log("Backend Response:", data);
         hideLoader();
         clearTimeout(timeoutHandle);
 
-        if (data.response && data.response.type === 'agenda') {
+       if (data.response && data.response.type === 'agenda') {
             if (data.response.url) {
                 displayAssistantMessage(
                     `check wat ik gevonden heb! of <a href="${data.response.url}" target="_blank">bekijk het op OBA.nl</a>`
-                );
-            }
-            if (data.response.message) {
-                displayAssistantMessage(data.response.message);
-            }
-            previousResults = data.response.results || [];
-            displayAgendaResults(previousResults);
-            await loadFilterTemplate("agenda");
-            await sendStatusKlaar();
-            return;
+            );
+        }
+        if (data.response.message) {
+            displayAssistantMessage(data.response.message);
+        }
+        previousResults = data.response.results || [];
+        displayAgendaResults(previousResults);
+        await sendStatusKlaar();
+        return;
         }
 
         if (data.response?.type === 'faq') {
@@ -279,12 +257,12 @@ async function sendMessage() {
             } else {
                 displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
             }
-            document.getElementById("filter-options").innerHTML = "";
             await sendStatusKlaar();
             return;
-        }
+    }
 
         if (!data.response?.results) {
+            console.log("Assistant Message:", data.response);
             displayAssistantMessage(data.response);
         }
 
@@ -293,9 +271,9 @@ async function sendMessage() {
         }
 
         if (data.response?.results) {
+            console.log("Assistant Message:", data.response);
             previousResults = data.response.results;
             displaySearchResults(previousResults);
-            await loadFilterTemplate("collection");
             await sendStatusKlaar();
         }
 
@@ -305,16 +283,6 @@ async function sendMessage() {
     }
 
     checkInput();
-    scrollToBottom();
-}
-
-
-function displayUserMessage(message) {
-    const messageContainer = document.getElementById('messages');
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('user-message');
-    messageElement.textContent = message;
-    messageContainer.appendChild(messageElement);
     scrollToBottom();
 }
 
@@ -349,19 +317,13 @@ async function sendStatusKlaar() {
     } catch (error) {}
 }
 
-function startNewChat() {
-    startThread();
-    document.getElementById('messages').innerHTML = '';
-    document.getElementById('search-results').innerHTML = '';
-    document.getElementById('detail-container').style.display = 'none';
-    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
-    document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
-    addOpeningMessage();
-    addPlaceholders();
+function displayUserMessage(message) {
+    const messageContainer = document.getElementById('messages');
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('user-message');
+    messageElement.textContent = message;
+    messageContainer.appendChild(messageElement);
     scrollToBottom();
-    resetFilters();
-    linkedPPNs.clear();
-    updateActionButtons();
 }
 
 function displayAssistantMessage(message) {
@@ -583,30 +545,14 @@ function sendDetailPageLinkToUser(title, baseUrl, ppn) {
 }
 
 async function applyFiltersAndSend() {
-    let filterString = "";
-
-    const agendaLocation = document.getElementById("agenda-location");
-    if (agendaLocation) {
-        const location = agendaLocation.value;
-        const age = document.getElementById("agenda-age").value;
-        const date = document.getElementById("agenda-date").value;
-        const type = document.getElementById("agenda-type").value;
-
-        const selected = [];
-        if (location) selected.push(`Locatie: ${location}`);
-        if (age) selected.push(`Leeftijd: ${age}`);
-        if (date) selected.push(`Wanneer: ${date}`);
-        if (type) selected.push(`Type: ${type}`);
-        filterString = selected.join("||");
-    } else {
-        const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
-        const selected = [];
-        checkboxes.forEach(checkbox => {
-            if (checkbox.checked) selected.push(checkbox.value);
-        });
-        filterString = selected.join("||");
-    }
-
+    const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
+    let selectedFilters = [];
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            selectedFilters.push(checkbox.value);
+        }
+    });
+    const filterString = selectedFilters.join('||');
     if (filterString === "") return;
 
     displayUserMessage(`Filters toegepast: ${filterString}`);
@@ -638,12 +584,10 @@ async function applyFiltersAndSend() {
         if (data.response && data.response.type === 'agenda') {
             previousResults = data.response.results || [];
             displayAgendaResults(previousResults);
-            await loadFilterTemplate("agenda");
             await sendStatusKlaar();
         } else if (data.results) {
             previousResults = data.results;
             displaySearchResults(previousResults);
-            await loadFilterTemplate("collection");
             await sendStatusKlaar();
         }
 
@@ -666,6 +610,21 @@ async function applyFiltersAndSend() {
     }
 
     checkInput();
+}
+
+function startNewChat() {
+    startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('detail-container').style.display = 'none';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
+    addOpeningMessage();
+    addPlaceholders();
+    scrollToBottom();
+    resetFilters();
+    linkedPPNs.clear();
+    updateActionButtons();
 }
 
 async function startHelpThread() {
@@ -719,13 +678,8 @@ function extractSearchQuery(response) {
 function resetFilters() {
     const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
     checkboxes.forEach(checkbox => { checkbox.checked = false; });
-
-    const selects = document.querySelectorAll('#filters select');
-    selects.forEach(select => { select.value = ""; });
-
     checkInput();
 }
-
 
 function showLoader() {
     const messageContainer = document.getElementById('messages');
