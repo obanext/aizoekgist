@@ -176,27 +176,22 @@ function updateActionButtons() {
     backBtn.style.display = 'none';
 
     if (filterOpen) {
-        // filter open → toon loep (back) + results
         backBtn.style.display = 'inline-flex';
         backBtn.onclick = () => closeFilterPanel(true);
         resultsBtn.style.display = 'inline-flex';
         resultsBtn.disabled = !hasResults;
     } else if (resultOpen) {
-        // results open → toon loep (back) + filters
         backBtn.style.display = 'inline-flex';
         backBtn.onclick = () => closeResultPanel(true);
         filtersBtn.style.display = 'inline-flex';
         filtersBtn.disabled = !hasResults;
     } else {
-        // geen overlay → toon results + filters
         resultsBtn.disabled = !hasResults;
         filtersBtn.disabled = !hasResults;
         resultsBtn.style.display = 'inline-flex';
         filtersBtn.style.display = 'inline-flex';
     }
 }
-
-
 
 async function startThread() {
     const response = await fetch('/start_thread', { method: 'POST' });
@@ -313,6 +308,61 @@ async function sendMessage() {
     scrollToBottom();
 }
 
+
+function displayUserMessage(message) {
+    const messageContainer = document.getElementById('messages');
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('user-message');
+    messageElement.textContent = message;
+    messageContainer.appendChild(messageElement);
+    scrollToBottom();
+}
+
+function resetThread() {
+    startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
+    addOpeningMessage();
+    addPlaceholders();
+    scrollToBottom();
+    resetFilters();
+    linkedPPNs.clear();
+    updateActionButtons();
+}
+
+async function sendStatusKlaar() {
+    try {
+        const response = await fetch('/send_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: thread_id,
+                user_input: 'STATUS : KLAAR',
+                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
+            })
+        });
+        const data = await response.json();
+        displayAssistantMessage(data.response);
+        scrollToBottom();
+    } catch (error) {}
+}
+
+function startNewChat() {
+    startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('detail-container').style.display = 'none';
+    document.getElementById('breadcrumbs').innerHTML = 'resultaten';
+    document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
+    addOpeningMessage();
+    addPlaceholders();
+    scrollToBottom();
+    resetFilters();
+    linkedPPNs.clear();
+    updateActionButtons();
+}
 
 function displayAssistantMessage(message) {
     const messageContainer = document.getElementById('messages');
