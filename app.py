@@ -535,6 +535,7 @@ def apply_filters():
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
 
+        # --- SEARCH ---
         if search_query:
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
             search_params = parse_assistant_message(response_text_2)
@@ -544,19 +545,25 @@ def apply_filters():
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     return jsonify({
-                        'response': {
-                            'type': 'agenda',
-                            'url': (agenda_results[0]["link"] if agenda_results else ""),
-                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
-                            'results': agenda_results
+                        "response": {
+                            "type": "agenda",
+                            "results": agenda_results,
+                            "message": "Is dit wat je zoekt of ben je op zoek naar iets anders?"
                         },
-                        'thread_id': thread_id
+                        "thread_id": thread_id
                     })
                 results = perform_typesense_search(search_params)
-                return jsonify({'results': results.get('results', []), 'thread_id': thread_id})
-            return jsonify({'response': response_text_2, 'thread_id': thread_id})
+                return jsonify({
+                    "response": {
+                        "type": "collection" if results.get("results") else "text",
+                        "results": results.get("results", []),
+                        "message": None
+                    },
+                    "thread_id": thread_id
+                })
 
-        elif comparison_query:
+        # --- COMPARISON ---
+        if comparison_query:
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
             if search_params:
@@ -565,23 +572,32 @@ def apply_filters():
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     return jsonify({
-                        'response': {
-                            'type': 'agenda',
-                            'url': (agenda_results[0]["link"] if agenda_results else ""),
-                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
-                            'results': agenda_results
+                        "response": {
+                            "type": "agenda",
+                            "results": agenda_results,
+                            "message": "Is dit wat je zoekt of ben je op zoek naar iets anders?"
                         },
-                        'thread_id': thread_id
+                        "thread_id": thread_id
                     })
                 results = perform_typesense_search(search_params)
-                return jsonify({'results': results.get('results', []), 'thread_id': thread_id})
-            return jsonify({'response': response_text_3, 'thread_id': thread_id})
+                return jsonify({
+                    "response": {
+                        "type": "collection" if results.get("results") else "text",
+                        "results": results.get("results", []),
+                        "message": None
+                    },
+                    "thread_id": thread_id
+                })
 
-        return jsonify({'response': response_text, 'thread_id': thread_id})
+        # --- FALLBACK ---
+        return jsonify({
+            "response": {"type": "text", "results": [], "message": response_text},
+            "thread_id": thread_id
+        })
 
     except Exception:
         logger.exception("apply_filters_error")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'internal server error'}), 500
 
 
 # -------- Proxies voor boeken (PPN -> item_id -> details)
