@@ -56,11 +56,26 @@
 
         <div id="filter-section" aria-hidden="true" aria-modal="true" role="dialog">
             <h2>filters</h2>
-              <div id="filters">
-                <div id="filter-options"></div>
-                    <button id="apply-filters-button" onclick="applyFiltersAndSend()">pas filters toe</button>
-              </div>
+            <div id="filters">
+                <div id="filter-options">
+                    <label><input type="checkbox" value="prentenboeken baby"> prentenboeken baby</label>
+                    <label><input type="checkbox" value="prentenboeken tot 4 jaar"> prentenboeken tot 4 jaar</label>
+                    <label><input type="checkbox" value="prentenboeken vanaf 4 jaar"> prentenboeken vanaf 4 jaar</label>
+                    <br>
+                    <label><input type="checkbox" value="fictie tot 9 jaar"> A tot 9 jaar</label>
+                    <label><input type="checkbox" value="fictie 9 tot 12 jaar"> B 9 tot 12 jaar</label>
+                    <label><input type="checkbox" value="fictie vanaf 12 jaar"> C vanaf 12 jaar</label>
+                    <label><input type="checkbox" value="fictie vanaf 15 jaar"> D vanaf 15 jaar</label>
+                    <label><input type="checkbox" value="fictie volwassenen"> fictie volwassenen</label>
+                    <br>
+                    <label><input type="checkbox" value="info tot 9 jaar"> info tot 9 jaar</label>
+                    <label><input type="checkbox" value="info vanaf 9 jaar"> info vanaf 9 jaar</label>
+                    <label><input type="checkbox" value="info volwassenen"> info volwassenen</label>
+                </div>
+                <button id="apply-filters-button" onclick="applyFiltersAndSend()">pas filters toe</button>
+            </div>
         </div>
+    </div>
 
     <div id="panel-overlay" onclick="closeAnyPanel()"></div>
 
