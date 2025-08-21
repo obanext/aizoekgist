@@ -210,6 +210,32 @@ def parse_assistant_message(content):
 
 def perform_typesense_search(params):
     headers = {'Content-Type': 'application/json', 'X-TYPESENSE-API-KEY': typesense_api_key}
+
+    # === obafaq ===
+    if params["collection"] == "obafaq":
+        body = {
+            "searches": [{
+                "q": params["q"],
+                "query_by": params["query_by"],
+                "collection": params["collection"],
+                "prefix": "false",
+                "vector_query": params["vector_query"],
+                "per_page": 1,   # alleen eerste antwoord
+                "filter_by": params["filter_by"]
+            }]
+        }
+        response = requests.post(typesense_api_url, headers=headers, json=body, timeout=15)
+        if response.status_code == 200:
+            data = response.json()
+            try:
+                doc = data["results"][0]["hits"][0]["document"]
+                return {"results": [{"antwoord": doc.get("antwoord", "")}], "type": "faq"}
+            except Exception:
+                return {"results": [], "type": "faq"}
+        else:
+            return {"error": response.status_code, "message": response.text, "type": "faq"}
+
+    # === collectie ===
     body = {
         "searches": [{
             "q": params["q"],
