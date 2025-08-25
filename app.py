@@ -412,7 +412,7 @@ def send_message():
             if search_params:
                 coll = search_params.get("collection")
                 logger.info(f"collection={coll}")
-                if coll == "obadbevents13825":   # <-- Pas aan indien je een andere events-collectie gebruikt
+                if coll == "obadbevents":   # <-- Pas aan indien je een andere events-collectie gebruikt
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
@@ -436,7 +436,7 @@ def send_message():
             if search_params:
                 coll = search_params.get("collection")
                 logger.info(f"collection={coll}")
-                if coll == "obadbevents13825":
+                if coll == "obadbevents":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
@@ -487,7 +487,7 @@ def send_message():
                     "vector_query": agenda_obj.get("vector_query", "embedding:([], alpha: 0.8)"),
                     "filter_by": agenda_obj.get("filter_by", "")
                 }
-                if params["collection"] == "obadbevents13825":  # <-- Pas aan indien je een andere events-collectie gebruikt
+                if params["collection"] == "obadbevents":  # <-- Pas aan indien je een andere events-collectie gebruikt
                     nativeids = perform_typesense_search_events(params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
@@ -541,7 +541,7 @@ def apply_filters():
             search_params = parse_assistant_message(response_text_2)
             if search_params:
                 coll = search_params.get("collection")
-                if coll == "obadbevents13825":
+                if coll == "obadbevents":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     return jsonify({
@@ -568,7 +568,7 @@ def apply_filters():
             search_params = parse_assistant_message(response_text_3)
             if search_params:
                 coll = search_params.get("collection")
-                if coll == "obadbevents13825":
+                if coll == "obadbevents":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     return jsonify({
