@@ -254,10 +254,6 @@ async function sendMessage() {
         const { response: resp, thread_id: newTid } = data;
         if (newTid) thread_id = newTid;
 
-        if (resp && resp.message && resp.type !== 'faq') {
-            displayAssistantMessage(resp.message);
-        }
-
         switch (resp?.type) {
             case 'agenda': {
                 previousResults = resp.results || [];
