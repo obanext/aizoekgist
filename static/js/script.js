@@ -258,6 +258,16 @@ async function sendMessage() {
             case 'agenda': {
                 previousResults = resp.results || [];
                 displayAgendaResults(previousResults);
+
+                if (resp.url) {
+                    displayAssistantMessage(
+                        `Bekijk alles op <a href="${resp.url}" target="_blank">OBA Agenda</a>`
+                    );
+                }
+                if (resp.message) {
+                    displayAssistantMessage(resp.message);
+                }
+
                 await loadFilterTemplate("agenda");
                 await sendStatusKlaar();
                 break;
@@ -265,6 +275,9 @@ async function sendMessage() {
             case 'collection': {
                 previousResults = resp.results || [];
                 displaySearchResults(previousResults);
+                if (resp.message) {
+                    displayAssistantMessage(resp.message);
+                }
                 await loadFilterTemplate("collection");
                 await sendStatusKlaar();
                 break;
