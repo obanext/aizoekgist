@@ -413,8 +413,8 @@ def send_message():
 
         # bepaal actieve agent
         active = active_agents.get(thread_id, "router")
-
         response_text = None
+
         if active == "search":
             response_text, thread_id = call_assistant(assistant_id_2, user_input, thread_id)
         elif active == "compare":
