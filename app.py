@@ -34,6 +34,7 @@ if not logger.handlers:
     logger.addHandler(log_handler)
 logger.propagate = False
 
+active_agents = {}  # {thread_id: "router"|"search"|"compare"|"agenda"}
 
 @app.before_request
 def _start_timer():
@@ -410,8 +411,18 @@ def send_message():
         assistant_id = data['assistant_id']
         logger.info(f"send_message_in thread_id={thread_id} assistant_id={assistant_id} text_len={len(user_input)}")
 
-        # Stap 1: routing agent
-        response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
+        # bepaal actieve agent
+        active = active_agents.get(thread_id, "router")
+
+        response_text = None
+        if active == "search":
+            response_text, thread_id = call_assistant(assistant_id_2, user_input, thread_id)
+        elif active == "compare":
+            response_text, thread_id = call_assistant(assistant_id_3, user_input, thread_id)
+        elif active == "agenda":
+            response_text, thread_id = call_assistant(assistant_id_4, user_input, thread_id)
+        else:
+            response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
 
         # Stap 2: check mogelijke routes
         search_query = extract_search_query(response_text)
@@ -421,6 +432,7 @@ def send_message():
 
         # --- SEARCH ---
         if search_query:
+            active_agents[thread_id] = "search"
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
             search_params = parse_assistant_message(response_text_2)
             if search_params:
@@ -473,6 +485,7 @@ def send_message():
 
         # --- COMPARISON ---
         if comparison_query:
+            active_agents[thread_id] = "compare"
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
             if search_params:
@@ -522,6 +535,7 @@ def send_message():
 
         # --- AGENDA ---
         if agenda_query:
+            active_agents[thread_id] = "agenda"
             response_text_4, thread_id = call_assistant(assistant_id_4, agenda_query, thread_id)
             try:
                 agenda_obj = json.loads(response_text_4)
@@ -584,6 +598,7 @@ def send_message():
             ))
 
         # --- FALLBACK conversatie ---
+        active_agents[thread_id] = "router"
         return jsonify(make_envelope(
             resp_type="text",
             results=[],
@@ -606,7 +621,7 @@ def apply_filters():
         assistant_id = data['assistant_id']
         logger.info(f"apply_filters_in thread_id={thread_id} assistant_id={assistant_id} filters_len={len(filter_values)}")
 
-        # Stap 1: stuur filters naar routing assistant
+        # altijd terug naar router voor filters
         response_text, thread_id = call_assistant(assistant_id, filter_values, thread_id)
 
         # Stap 2: herken query-type
@@ -616,6 +631,7 @@ def apply_filters():
 
         # --- SEARCH ---
         if search_query:
+            active_agents[thread_id] = "search"
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
             search_params = parse_assistant_message(response_text_2)
             if search_params:
@@ -657,6 +673,7 @@ def apply_filters():
 
         # --- COMPARISON ---
         if comparison_query:
+            active_agents[thread_id] = "compare"
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
             if search_params:
@@ -698,6 +715,7 @@ def apply_filters():
 
         # --- AGENDA ---
         if agenda_query:
+            active_agents[thread_id] = "agenda"
             response_text_4, thread_id = call_assistant(assistant_id_4, agenda_query, thread_id)
             try:
                 agenda_obj = json.loads(response_text_4)
@@ -753,6 +771,7 @@ def apply_filters():
             ))
 
         # --- FALLBACK ---
+        active_agents[thread_id] = "router"
         return jsonify(make_envelope(
             resp_type="text",
             results=[],
