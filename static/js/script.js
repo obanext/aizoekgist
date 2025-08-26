@@ -308,7 +308,6 @@ function resetThread() {
     document.getElementById('search-results').innerHTML = '';
     document.getElementById('breadcrumbs').innerHTML = 'resultaten';
     document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
-    addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
     resetFilters();
@@ -684,13 +683,13 @@ function startNewChat() {
     document.getElementById('detail-container').style.display = 'none';
     document.getElementById('breadcrumbs').innerHTML = 'resultaten';
     document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
-    addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
     resetFilters();
     linkedPPNs.clear();
     updateActionButtons();
 }
+
 
 async function startHelpThread() {
     await startThread();
