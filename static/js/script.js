@@ -308,6 +308,7 @@ function resetThread() {
     document.getElementById('search-results').innerHTML = '';
     document.getElementById('breadcrumbs').innerHTML = 'resultaten';
     document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
+    addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
     resetFilters();
@@ -620,7 +621,7 @@ async function applyFiltersAndSend() {
         const { response: resp, thread_id: newTid } = data;
         if (newTid) thread_id = newTid;
 
-        if (resp && resp.message && resp.type !== 'faq' && resp.type !== 'text') {
+        if (resp && resp.message && resp.type !== 'faq') {
             displayAssistantMessage(resp.message);
         }
 
@@ -683,13 +684,13 @@ function startNewChat() {
     document.getElementById('detail-container').style.display = 'none';
     document.getElementById('breadcrumbs').innerHTML = 'resultaten';
     document.getElementById('user-input').placeholder = "Welk boek zoek je? Of informatie over..?";
+    addOpeningMessage();
     addPlaceholders();
     scrollToBottom();
     resetFilters();
     linkedPPNs.clear();
     updateActionButtons();
 }
-
 
 async function startHelpThread() {
     await startThread();
