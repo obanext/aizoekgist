@@ -399,24 +399,25 @@ def send_message():
         assistant_id = data['assistant_id']
         logger.info(f"send_message_in thread_id={thread_id} assistant_id={assistant_id} text_len={len(user_input)}")
 
+        # --- Stap 1: routing agent ---
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
+
+        # --- Stap 2: check alle mogelijke routes ---
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
         agenda_query = extract_agenda_query(response_text)
         logger.info(f"send_message_paths search={bool(search_query)} compare={bool(comparison_query)} agenda={bool(agenda_query)}")
 
+        # --- SEARCH ---
         if search_query:
             response_text_2, thread_id = call_assistant(assistant_id_2, search_query, thread_id)
             search_params = parse_assistant_message(response_text_2)
-            logger.info(f"search_params_present={bool(search_params)}")
             if search_params:
                 coll = search_params.get("collection")
-                logger.info(f"collection={coll}")
-                if coll == "obadbevents":   # <-- Pas aan indien je een andere events-collectie gebruikt
+                if coll == "obadbevents":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
-                    logger.info(f"agenda_results_count={len(agenda_results)}")
                     return jsonify({
                         'response': {
                             'type': 'agenda',
@@ -429,18 +430,16 @@ def send_message():
                 return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
             return jsonify({'response': response_text_2, 'thread_id': thread_id})
 
-        elif comparison_query:
+        # --- COMPARISON ---
+        if comparison_query:
             response_text_3, thread_id = call_assistant(assistant_id_3, comparison_query, thread_id)
             search_params = parse_assistant_message(response_text_3)
-            logger.info(f"compare_params_present={bool(search_params)}")
             if search_params:
                 coll = search_params.get("collection")
-                logger.info(f"collection={coll}")
                 if coll == "obadbevents":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
-                    logger.info(f"agenda_results_count={len(agenda_results)}")
                     return jsonify({
                         'response': {
                             'type': 'agenda',
@@ -453,7 +452,8 @@ def send_message():
                 return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
             return jsonify({'response': response_text_3, 'thread_id': thread_id})
 
-        elif agenda_query:
+        # --- AGENDA ---
+        if agenda_query:
             response_text_4, thread_id = call_assistant(assistant_id_4, agenda_query, thread_id)
             try:
                 agenda_obj = json.loads(response_text_4)
@@ -461,11 +461,8 @@ def send_message():
                 logger.warning("agenda_json_decode_error")
                 return jsonify({'response': response_text_4, 'thread_id': thread_id})
 
-            logger.info(f"agenda_detect keys={list(agenda_obj.keys())}")
-
-            # Route A: directe API/URL van agent
+            # Route A: agent geeft API/URL terug
             if "API" in agenda_obj and "URL" in agenda_obj:
-                logger.info("agenda_path=A")
                 results = fetch_agenda_results(agenda_obj["API"])
                 return jsonify({
                     'response': {
@@ -477,9 +474,8 @@ def send_message():
                     'thread_id': thread_id
                 })
 
-            # Route B: Typesense query object van agent
+            # Route B: agent geeft Typesense object terug
             if "q" in agenda_obj and "collection" in agenda_obj:
-                logger.info("agenda_path=B")
                 params = {
                     "q": agenda_obj.get("q", ""),
                     "collection": agenda_obj.get("collection", ""),
@@ -487,7 +483,7 @@ def send_message():
                     "vector_query": agenda_obj.get("vector_query", "embedding:([], alpha: 0.8)"),
                     "filter_by": agenda_obj.get("filter_by", "")
                 }
-                if params["collection"] == "obadbevents":  # <-- Pas aan indien je een andere events-collectie gebruikt
+                if params["collection"] == "obadbevents":
                     nativeids = perform_typesense_search_events(params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
@@ -500,7 +496,6 @@ def send_message():
                         },
                         'thread_id': thread_id
                     })
-                logger.info("agenda_b_not_events_collection")
                 return jsonify({
                     'response': {
                         'type': 'agenda',
@@ -511,15 +506,15 @@ def send_message():
                     'thread_id': thread_id
                 })
 
-            logger.warning("agenda_unknown_format")
             return jsonify({'response': response_text_4, 'thread_id': thread_id})
 
-        logger.info("send_message_fallback_text")
+        # --- FALLBACK ---
         return jsonify({'response': response_text, 'thread_id': thread_id})
 
     except Exception as e:
         logger.exception("send_message_error")
         return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/apply_filters', methods=['POST'])
