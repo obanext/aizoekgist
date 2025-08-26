@@ -433,7 +433,7 @@ def send_message():
                         resp_type="agenda",
                         results=agenda_results,
                         url=first_url,
-                        message="Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                        message=search_params.get("message"),
                         thread_id=thread_id
                     ))
                 # collectie of faq
@@ -443,7 +443,7 @@ def send_message():
                         resp_type="faq",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=None,
+                        message=results_obj.get("message"),
                         thread_id=thread_id
                     ))
                 if "results" in results_obj:
@@ -451,7 +451,7 @@ def send_message():
                         resp_type="collection",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=None,
+                        message=results_obj.get("message"),
                         thread_id=thread_id
                     ))
                 # error pad
@@ -485,7 +485,7 @@ def send_message():
                         resp_type="agenda",
                         results=agenda_results,
                         url=first_url,
-                        message="Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                        message=search_params.get("message"),
                         thread_id=thread_id
                     ))
                 results_obj = perform_typesense_search(search_params)
@@ -494,7 +494,7 @@ def send_message():
                         resp_type="faq",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=None,
+                        message=results_obj.get("message"),
                         thread_id=thread_id
                     ))
                 if "results" in results_obj:
@@ -502,7 +502,7 @@ def send_message():
                         resp_type="collection",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=None,
+                        message=results_obj.get("message"),
                         thread_id=thread_id
                     ))
                 return jsonify(make_envelope(
@@ -542,7 +542,7 @@ def send_message():
                     resp_type="agenda",
                     results=results,
                     url=agenda_obj.get("URL", ""),
-                    message=agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                    message=agenda_obj.get("Message"),
                     thread_id=thread_id
                 ))
 
@@ -563,7 +563,7 @@ def send_message():
                         resp_type="agenda",
                         results=agenda_results,
                         url=first_url,
-                        message=agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                        message=agenda_obj.get("Message"),
                         thread_id=thread_id
                     ))
                 return jsonify(make_envelope(
@@ -627,7 +627,7 @@ def apply_filters():
                         resp_type="agenda",
                         results=agenda_results,
                         url=agenda_results[0]["link"] if agenda_results else "",
-                        message="Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                        message=search_params.get("message"),
                         thread_id=thread_id
                     ))
                 results_obj = perform_typesense_search(search_params)
@@ -636,7 +636,7 @@ def apply_filters():
                         resp_type="faq",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=None,
+                        message=results_obj.get("message"),
                         thread_id=thread_id
                     ))
                 if "results" in results_obj:
@@ -644,7 +644,7 @@ def apply_filters():
                         resp_type="collection",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=None,
+                        message=results_obj.get("message"),
                         thread_id=thread_id
                     ))
                 return jsonify(make_envelope(
@@ -668,7 +668,7 @@ def apply_filters():
                         resp_type="agenda",
                         results=agenda_results,
                         url=agenda_results[0]["link"] if agenda_results else "",
-                        message="Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                        message=search_params.get("message"),
                         thread_id=thread_id
                     ))
                 results_obj = perform_typesense_search(search_params)
@@ -677,7 +677,7 @@ def apply_filters():
                         resp_type="faq",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=None,
+                        message=results_obj.get("message"),
                         thread_id=thread_id
                     ))
                 if "results" in results_obj:
@@ -685,7 +685,7 @@ def apply_filters():
                         resp_type="collection",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=None,
+                        message=results_obj.get("message"),
                         thread_id=thread_id
                     ))
                 return jsonify(make_envelope(
@@ -718,7 +718,7 @@ def apply_filters():
                     resp_type="agenda",
                     results=results,
                     url=agenda_obj.get("URL", ""),
-                    message=agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                    message=agenda_obj.get("Message"),
                     thread_id=thread_id
                 ))
 
@@ -739,7 +739,7 @@ def apply_filters():
                         resp_type="agenda",
                         results=agenda_results,
                         url=first_url,
-                        message=agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                        message=agenda_obj.get("Message"),
                         thread_id=thread_id
                     ))
 
