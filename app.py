@@ -526,9 +526,13 @@ def apply_filters():
         assistant_id = data['assistant_id']
         logger.info(f"apply_filters_in thread_id={thread_id} assistant_id={assistant_id} filters_len={len(filter_values)}")
 
+        # Stap 1: stuur filters naar routing assistant
         response_text, thread_id = call_assistant(assistant_id, filter_values, thread_id)
+
+        # Stap 2: herken query-type
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
+        agenda_query = extract_agenda_query(response_text)
 
         # --- SEARCH ---
         if search_query:
@@ -583,6 +587,54 @@ def apply_filters():
                     },
                     "thread_id": thread_id
                 })
+
+        # --- AGENDA ---
+        if agenda_query:
+            response_text_4, thread_id = call_assistant(assistant_id_4, agenda_query, thread_id)
+            try:
+                agenda_obj = json.loads(response_text_4)
+            except json.JSONDecodeError:
+                logger.warning("apply_filters_agenda_json_decode_error")
+                return jsonify({"response": {"type": "text", "results": [], "message": response_text_4}, "thread_id": thread_id})
+
+            # Route A: API + URL
+            if "API" in agenda_obj and "URL" in agenda_obj:
+                results = fetch_agenda_results(agenda_obj["API"])
+                return jsonify({
+                    "response": {
+                        "type": "agenda",
+                        "url": agenda_obj.get("URL", ""),
+                        "message": agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                        "results": results
+                    },
+                    "thread_id": thread_id
+                })
+
+            # Route B: Typesense object
+            if "q" in agenda_obj and "collection" in agenda_obj:
+                params = {
+                    "q": agenda_obj.get("q", ""),
+                    "collection": agenda_obj.get("collection", ""),
+                    "query_by": agenda_obj.get("query_by", "embedding"),
+                    "vector_query": agenda_obj.get("vector_query", "embedding:([], alpha: 0.8)"),
+                    "filter_by": agenda_obj.get("filter_by", "")
+                }
+                if params["collection"] == "obadbevents":
+                    nativeids = perform_typesense_search_events(params)
+                    agenda_results = build_agenda_results_from_nativeids(nativeids)
+                    first_url = agenda_results[0]["link"] if agenda_results else ""
+                    return jsonify({
+                        "response": {
+                            "type": "agenda",
+                            "url": first_url,
+                            "message": agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                            "results": agenda_results
+                        },
+                        "thread_id": thread_id
+                    })
+
+            # Onbekend formaat
+            return jsonify({"response": {"type": "text", "results": [], "message": response_text_4}, "thread_id": thread_id})
 
         # --- FALLBACK ---
         return jsonify({
