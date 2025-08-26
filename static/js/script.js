@@ -620,7 +620,8 @@ async function applyFiltersAndSend() {
         const { response: resp, thread_id: newTid } = data;
         if (newTid) thread_id = newTid;
 
-        if (resp && resp.message && resp.type !== 'faq') {
+        // Zelfde principe: geen pre-message voor 'text'
+        if (resp && resp.message && resp.type !== 'faq' && resp.type !== 'text') {
             displayAssistantMessage(resp.message);
         }
 
