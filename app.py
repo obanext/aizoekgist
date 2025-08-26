@@ -94,17 +94,21 @@ def extract_agenda_query(response):
 def normalize_message(raw):
     if not raw:
         return None
+    # Als het string is en lijkt op JSON, probeer te parsen
     if isinstance(raw, str):
         try:
             parsed = json.loads(raw)
-            if isinstance(parsed, dict) and "Message" in parsed:
-                return parsed["Message"]
+            if isinstance(parsed, dict):
+                # pak alleen de Message als die er is
+                return parsed.get("Message")
             return raw
         except:
             return raw
-    if isinstance(raw, dict) and "Message" in raw:
-        return raw["Message"]
+    # Als het dict is, pak alleen Message
+    if isinstance(raw, dict):
+        return raw.get("Message")
     return str(raw)
+
 
 # -------- Agenda XML fetch (route A)
 def fetch_agenda_results(api_url):
