@@ -255,13 +255,16 @@ async function sendMessage() {
         hideLoader();
         clearTimeout(timeoutHandle);
 
+        // Agenda result
         if (data.response && data.response.type === 'agenda') {
             previousResults = data.response.results || [];
             displayAgendaResults(previousResults);
             await loadFilterTemplate("agenda");
-            return; // geen STATUS:KLAAR hier
+            await sendStatusKlaar();   // teruggezet
+            return;
         }
 
+        // FAQ result
         if (data.response?.type === 'faq') {
             const faqResults = data.response.results || [];
             if (faqResults.length > 0) {
@@ -273,6 +276,7 @@ async function sendMessage() {
             return;
         }
 
+        // Plain text response
         if (!data.response?.results) {
             displayAssistantMessage(data.response);
         }
@@ -281,10 +285,12 @@ async function sendMessage() {
             thread_id = data.thread_id;
         }
 
+        // Collection results
         if (data.response?.results) {
             previousResults = data.response.results;
             displaySearchResults(previousResults);
             await loadFilterTemplate("collection");
+            await sendStatusKlaar();   // teruggezet
         }
 
         resetFilters();
@@ -613,12 +619,12 @@ async function applyFiltersAndSend() {
             previousResults = data.response.results || [];
             displayAgendaResults(previousResults);
             await loadFilterTemplate("agenda");
-            await sendStatusKlaar();
+            await sendStatusKlaar();   // blijft hier
         } else if (data.results) {
             previousResults = data.results;
             displaySearchResults(previousResults);
             await loadFilterTemplate("collection");
-            await sendStatusKlaar();
+            await sendStatusKlaar();   // blijft hier
         }
 
         if (data.thread_id) {
@@ -641,6 +647,7 @@ async function applyFiltersAndSend() {
 
     checkInput();
 }
+
 
 function startNewChat() {
     startThread();
