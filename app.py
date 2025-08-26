@@ -56,6 +56,19 @@ def _handle_error(e):
     return jsonify({'error': 'internal server error'}), 500
 
 
+# -------- Uniforme envelop
+def make_envelope(resp_type, results=None, url=None, message=None, thread_id=None):
+    return {
+        "response": {
+            "type": resp_type,           # "collection" | "agenda" | "faq" | "text"
+            "url": url,
+            "message": message,
+            "results": results or []
+        },
+        "thread_id": thread_id
+    }
+
+
 # -------- Helpers to parse assistant "routes"
 def extract_search_query(response):
     marker = "SEARCH_QUERY:"
@@ -220,7 +233,7 @@ def perform_typesense_search(params):
                 "collection": params["collection"],
                 "prefix": "false",
                 "vector_query": params["vector_query"],
-                "per_page": 1,   # alleen eerste antwoord
+                "per_page": 1,
                 "filter_by": params["filter_by"]
             }]
         }
@@ -279,7 +292,6 @@ def perform_typesense_search_events(params):
     if response.status_code == 200:
         data = response.json()
         hits = data["results"][0]["hits"]
-        # Support zowel `nativeid` als `native_id` in Typesense document
         nativeids = [
             h["document"].get("nativeid") or h["document"].get("native_id")
             for h in hits
@@ -362,7 +374,6 @@ def fetch_event_detail(nativeid):
         return None
 
 
-
 def build_agenda_results_from_nativeids(nativeids):
     results = []
     for nid in nativeids:
@@ -399,10 +410,10 @@ def send_message():
         assistant_id = data['assistant_id']
         logger.info(f"send_message_in thread_id={thread_id} assistant_id={assistant_id} text_len={len(user_input)}")
 
-        # --- Stap 1: routing agent ---
+        # Stap 1: routing agent
         response_text, thread_id = call_assistant(assistant_id, user_input, thread_id)
 
-        # --- Stap 2: check alle mogelijke routes ---
+        # Stap 2: check mogelijke routes
         search_query = extract_search_query(response_text)
         comparison_query = extract_comparison_query(response_text)
         agenda_query = extract_agenda_query(response_text)
@@ -418,17 +429,47 @@ def send_message():
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
-                    return jsonify({
-                        'response': {
-                            'type': 'agenda',
-                            'url': first_url,
-                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
-                            'results': agenda_results
-                        },
-                        'thread_id': thread_id
-                    })
-                return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
-            return jsonify({'response': response_text_2, 'thread_id': thread_id})
+                    return jsonify(make_envelope(
+                        resp_type="agenda",
+                        results=agenda_results,
+                        url=first_url,
+                        message="Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                        thread_id=thread_id
+                    ))
+                # collectie of faq
+                results_obj = perform_typesense_search(search_params)
+                if results_obj.get("type") == "faq":
+                    return jsonify(make_envelope(
+                        resp_type="faq",
+                        results=results_obj.get("results", []),
+                        url=None,
+                        message=None,
+                        thread_id=thread_id
+                    ))
+                if "results" in results_obj:
+                    return jsonify(make_envelope(
+                        resp_type="collection",
+                        results=results_obj.get("results", []),
+                        url=None,
+                        message=None,
+                        thread_id=thread_id
+                    ))
+                # error pad
+                return jsonify(make_envelope(
+                    resp_type="text",
+                    results=[],
+                    url=None,
+                    message=results_obj.get("message", "Er is iets misgegaan bij het zoeken."),
+                    thread_id=thread_id
+                ))
+            # geen parsebare params
+            return jsonify(make_envelope(
+                resp_type="text",
+                results=[],
+                url=None,
+                message=response_text_2,
+                thread_id=thread_id
+            ))
 
         # --- COMPARISON ---
         if comparison_query:
@@ -440,17 +481,44 @@ def send_message():
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
-                    return jsonify({
-                        'response': {
-                            'type': 'agenda',
-                            'url': first_url,
-                            'message': "Is dit wat je zoekt of ben je op zoek naar iets anders?",
-                            'results': agenda_results
-                        },
-                        'thread_id': thread_id
-                    })
-                return jsonify({'response': perform_typesense_search(search_params), 'thread_id': thread_id})
-            return jsonify({'response': response_text_3, 'thread_id': thread_id})
+                    return jsonify(make_envelope(
+                        resp_type="agenda",
+                        results=agenda_results,
+                        url=first_url,
+                        message="Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                        thread_id=thread_id
+                    ))
+                results_obj = perform_typesense_search(search_params)
+                if results_obj.get("type") == "faq":
+                    return jsonify(make_envelope(
+                        resp_type="faq",
+                        results=results_obj.get("results", []),
+                        url=None,
+                        message=None,
+                        thread_id=thread_id
+                    ))
+                if "results" in results_obj:
+                    return jsonify(make_envelope(
+                        resp_type="collection",
+                        results=results_obj.get("results", []),
+                        url=None,
+                        message=None,
+                        thread_id=thread_id
+                    ))
+                return jsonify(make_envelope(
+                    resp_type="text",
+                    results=[],
+                    url=None,
+                    message=results_obj.get("message", "Er is iets misgegaan bij het vergelijken."),
+                    thread_id=thread_id
+                ))
+            return jsonify(make_envelope(
+                resp_type="text",
+                results=[],
+                url=None,
+                message=response_text_3,
+                thread_id=thread_id
+            ))
 
         # --- AGENDA ---
         if agenda_query:
@@ -459,20 +527,24 @@ def send_message():
                 agenda_obj = json.loads(response_text_4)
             except json.JSONDecodeError:
                 logger.warning("agenda_json_decode_error")
-                return jsonify({'response': response_text_4, 'thread_id': thread_id})
+                return jsonify(make_envelope(
+                    resp_type="text",
+                    results=[],
+                    url=None,
+                    message=response_text_4,
+                    thread_id=thread_id
+                ))
 
             # Route A: agent geeft API/URL terug
             if "API" in agenda_obj and "URL" in agenda_obj:
                 results = fetch_agenda_results(agenda_obj["API"])
-                return jsonify({
-                    'response': {
-                        'type': 'agenda',
-                        'url': agenda_obj.get("URL", ""),
-                        'message': agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
-                        'results': results
-                    },
-                    'thread_id': thread_id
-                })
+                return jsonify(make_envelope(
+                    resp_type="agenda",
+                    results=results,
+                    url=agenda_obj.get("URL", ""),
+                    message=agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                    thread_id=thread_id
+                ))
 
             # Route B: agent geeft Typesense object terug
             if "q" in agenda_obj and "collection" in agenda_obj:
@@ -487,34 +559,42 @@ def send_message():
                     nativeids = perform_typesense_search_events(params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
-                    return jsonify({
-                        'response': {
-                            'type': 'agenda',
-                            'url': first_url,
-                            'message': agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
-                            'results': agenda_results
-                        },
-                        'thread_id': thread_id
-                    })
-                return jsonify({
-                    'response': {
-                        'type': 'agenda',
-                        'url': "",
-                        'message': "Geen events-collectie gevonden.",
-                        'results': []
-                    },
-                    'thread_id': thread_id
-                })
+                    return jsonify(make_envelope(
+                        resp_type="agenda",
+                        results=agenda_results,
+                        url=first_url,
+                        message=agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                        thread_id=thread_id
+                    ))
+                return jsonify(make_envelope(
+                    resp_type="text",
+                    results=[],
+                    url=None,
+                    message="Geen events-collectie gevonden.",
+                    thread_id=thread_id
+                ))
 
-            return jsonify({'response': response_text_4, 'thread_id': thread_id})
+            # Onbekend formaat
+            return jsonify(make_envelope(
+                resp_type="text",
+                results=[],
+                url=None,
+                message=response_text_4,
+                thread_id=thread_id
+            ))
 
-        # --- FALLBACK ---
-        return jsonify({'response': response_text, 'thread_id': thread_id})
+        # --- FALLBACK conversatie ---
+        return jsonify(make_envelope(
+            resp_type="text",
+            results=[],
+            url=None,
+            message=response_text,
+            thread_id=thread_id
+        ))
 
     except Exception as e:
         logger.exception("send_message_error")
         return jsonify({'error': str(e)}), 500
-
 
 
 @app.route('/apply_filters', methods=['POST'])
@@ -543,23 +623,37 @@ def apply_filters():
                 if coll == "obadbevents":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
-                    return jsonify({
-                        "response": {
-                            "type": "agenda",
-                            "results": agenda_results,
-                            "message": "Is dit wat je zoekt of ben je op zoek naar iets anders?"
-                        },
-                        "thread_id": thread_id
-                    })
-                results = perform_typesense_search(search_params)
-                return jsonify({
-                    "response": {
-                        "type": "collection" if results.get("results") else "text",
-                        "results": results.get("results", []),
-                        "message": None
-                    },
-                    "thread_id": thread_id
-                })
+                    return jsonify(make_envelope(
+                        resp_type="agenda",
+                        results=agenda_results,
+                        url=agenda_results[0]["link"] if agenda_results else "",
+                        message="Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                        thread_id=thread_id
+                    ))
+                results_obj = perform_typesense_search(search_params)
+                if results_obj.get("type") == "faq":
+                    return jsonify(make_envelope(
+                        resp_type="faq",
+                        results=results_obj.get("results", []),
+                        url=None,
+                        message=None,
+                        thread_id=thread_id
+                    ))
+                if "results" in results_obj:
+                    return jsonify(make_envelope(
+                        resp_type="collection",
+                        results=results_obj.get("results", []),
+                        url=None,
+                        message=None,
+                        thread_id=thread_id
+                    ))
+                return jsonify(make_envelope(
+                    resp_type="text",
+                    results=[],
+                    url=None,
+                    message=results_obj.get("message", "Er is iets misgegaan bij het toepassen van filters."),
+                    thread_id=thread_id
+                ))
 
         # --- COMPARISON ---
         if comparison_query:
@@ -570,23 +664,37 @@ def apply_filters():
                 if coll == "obadbevents":
                     nativeids = perform_typesense_search_events(search_params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
-                    return jsonify({
-                        "response": {
-                            "type": "agenda",
-                            "results": agenda_results,
-                            "message": "Is dit wat je zoekt of ben je op zoek naar iets anders?"
-                        },
-                        "thread_id": thread_id
-                    })
-                results = perform_typesense_search(search_params)
-                return jsonify({
-                    "response": {
-                        "type": "collection" if results.get("results") else "text",
-                        "results": results.get("results", []),
-                        "message": None
-                    },
-                    "thread_id": thread_id
-                })
+                    return jsonify(make_envelope(
+                        resp_type="agenda",
+                        results=agenda_results,
+                        url=agenda_results[0]["link"] if agenda_results else "",
+                        message="Is dit wat je zoekt of ben je op zoek naar iets anders?",
+                        thread_id=thread_id
+                    ))
+                results_obj = perform_typesense_search(search_params)
+                if results_obj.get("type") == "faq":
+                    return jsonify(make_envelope(
+                        resp_type="faq",
+                        results=results_obj.get("results", []),
+                        url=None,
+                        message=None,
+                        thread_id=thread_id
+                    ))
+                if "results" in results_obj:
+                    return jsonify(make_envelope(
+                        resp_type="collection",
+                        results=results_obj.get("results", []),
+                        url=None,
+                        message=None,
+                        thread_id=thread_id
+                    ))
+                return jsonify(make_envelope(
+                    resp_type="text",
+                    results=[],
+                    url=None,
+                    message=results_obj.get("message", "Er is iets misgegaan bij het toepassen van filters (vergelijking)."),
+                    thread_id=thread_id
+                ))
 
         # --- AGENDA ---
         if agenda_query:
@@ -595,20 +703,24 @@ def apply_filters():
                 agenda_obj = json.loads(response_text_4)
             except json.JSONDecodeError:
                 logger.warning("apply_filters_agenda_json_decode_error")
-                return jsonify({"response": {"type": "text", "results": [], "message": response_text_4}, "thread_id": thread_id})
+                return jsonify(make_envelope(
+                    resp_type="text",
+                    results=[],
+                    url=None,
+                    message=response_text_4,
+                    thread_id=thread_id
+                ))
 
             # Route A: API + URL
             if "API" in agenda_obj and "URL" in agenda_obj:
                 results = fetch_agenda_results(agenda_obj["API"])
-                return jsonify({
-                    "response": {
-                        "type": "agenda",
-                        "url": agenda_obj.get("URL", ""),
-                        "message": agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
-                        "results": results
-                    },
-                    "thread_id": thread_id
-                })
+                return jsonify(make_envelope(
+                    resp_type="agenda",
+                    results=results,
+                    url=agenda_obj.get("URL", ""),
+                    message=agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                    thread_id=thread_id
+                ))
 
             # Route B: Typesense object
             if "q" in agenda_obj and "collection" in agenda_obj:
@@ -623,24 +735,31 @@ def apply_filters():
                     nativeids = perform_typesense_search_events(params)
                     agenda_results = build_agenda_results_from_nativeids(nativeids)
                     first_url = agenda_results[0]["link"] if agenda_results else ""
-                    return jsonify({
-                        "response": {
-                            "type": "agenda",
-                            "url": first_url,
-                            "message": agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
-                            "results": agenda_results
-                        },
-                        "thread_id": thread_id
-                    })
+                    return jsonify(make_envelope(
+                        resp_type="agenda",
+                        results=agenda_results,
+                        url=first_url,
+                        message=agenda_obj.get("Message", "Is dit wat je zoekt of ben je op zoek naar iets anders?"),
+                        thread_id=thread_id
+                    ))
 
             # Onbekend formaat
-            return jsonify({"response": {"type": "text", "results": [], "message": response_text_4}, "thread_id": thread_id})
+            return jsonify(make_envelope(
+                resp_type="text",
+                results=[],
+                url=None,
+                message=response_text_4,
+                thread_id=thread_id
+            ))
 
         # --- FALLBACK ---
-        return jsonify({
-            "response": {"type": "text", "results": [], "message": response_text},
-            "thread_id": thread_id
-        })
+        return jsonify(make_envelope(
+            resp_type="text",
+            results=[],
+            url=None,
+            message=response_text,
+            thread_id=thread_id
+        ))
 
     except Exception:
         logger.exception("apply_filters_error")
