@@ -255,16 +255,16 @@ async function sendMessage() {
         hideLoader();
         clearTimeout(timeoutHandle);
 
-        // Agenda result
+        // === Agenda ===
         if (data.response && data.response.type === 'agenda') {
             previousResults = data.response.results || [];
             displayAgendaResults(previousResults);
             await loadFilterTemplate("agenda");
-            await sendStatusKlaar();   // teruggezet
+            await sendStatusKlaar();   // alleen hier
             return;
         }
 
-        // FAQ result
+        // === FAQ ===
         if (data.response?.type === 'faq') {
             const faqResults = data.response.results || [];
             if (faqResults.length > 0) {
@@ -273,24 +273,25 @@ async function sendMessage() {
                 displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
             }
             document.getElementById("filter-options").innerHTML = "";
-            return;
+            return;  // geen STATUS:KLAAR
         }
 
-        // Plain text response
+        // === Conversatie (geen resultaten) ===
         if (!data.response?.results) {
             displayAssistantMessage(data.response);
+            return;  // geen STATUS:KLAAR
         }
 
         if (data.thread_id) {
             thread_id = data.thread_id;
         }
 
-        // Collection results
+        // === Collectie ===
         if (data.response?.results) {
             previousResults = data.response.results;
             displaySearchResults(previousResults);
             await loadFilterTemplate("collection");
-            await sendStatusKlaar();   // teruggezet
+            await sendStatusKlaar();   // alleen hier
         }
 
         resetFilters();
