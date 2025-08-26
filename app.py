@@ -91,6 +91,20 @@ def extract_agenda_query(response):
         return response.split(marker, 1)[1].strip()
     return None
 
+def normalize_message(raw):
+    if not raw:
+        return None
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict) and "Message" in parsed:
+                return parsed["Message"]
+            return raw
+        except:
+            return raw
+    if isinstance(raw, dict) and "Message" in raw:
+        return raw["Message"]
+    return str(raw)
 
 # -------- Agenda XML fetch (route A)
 def fetch_agenda_results(api_url):
@@ -445,7 +459,7 @@ def send_message():
                         resp_type="agenda",
                         results=agenda_results,
                         url=first_url,
-                        message=search_params.get("message"),
+                        message=normalize_message(search_params.get("message")),
                         thread_id=thread_id
                     ))
                 # collectie of faq
@@ -455,7 +469,7 @@ def send_message():
                         resp_type="faq",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=results_obj.get("message"),
+                        message=normalize_message(results_obj.get("message")),
                         thread_id=thread_id
                     ))
                 if "results" in results_obj:
@@ -463,7 +477,7 @@ def send_message():
                         resp_type="collection",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=results_obj.get("message"),
+                        message=normalize_message(results_obj.get("message")),
                         thread_id=thread_id
                     ))
                 # error pad
@@ -471,7 +485,7 @@ def send_message():
                     resp_type="text",
                     results=[],
                     url=None,
-                    message=results_obj.get("message", "Er is iets misgegaan bij het zoeken."),
+                    message=normalize_message(results_obj.get("message", "Er is iets misgegaan bij het zoeken.")),
                     thread_id=thread_id
                 ))
             # geen parsebare params
@@ -479,7 +493,7 @@ def send_message():
                 resp_type="text",
                 results=[],
                 url=None,
-                message=response_text_2,
+                message=normalize_message(response_text_2),
                 thread_id=thread_id
             ))
 
@@ -498,7 +512,7 @@ def send_message():
                         resp_type="agenda",
                         results=agenda_results,
                         url=first_url,
-                        message=search_params.get("message"),
+                        message=normalize_message(search_params.get("message")),
                         thread_id=thread_id
                     ))
                 results_obj = perform_typesense_search(search_params)
@@ -507,7 +521,7 @@ def send_message():
                         resp_type="faq",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=results_obj.get("message"),
+                        message=normalize_message(results_obj.get("message")),
                         thread_id=thread_id
                     ))
                 if "results" in results_obj:
@@ -515,21 +529,21 @@ def send_message():
                         resp_type="collection",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=results_obj.get("message"),
+                        message=normalize_message(results_obj.get("message")),
                         thread_id=thread_id
                     ))
                 return jsonify(make_envelope(
                     resp_type="text",
                     results=[],
                     url=None,
-                    message=results_obj.get("message", "Er is iets misgegaan bij het vergelijken."),
+                    message=normalize_message(results_obj.get("message", "Er is iets misgegaan bij het vergelijken.")),
                     thread_id=thread_id
                 ))
             return jsonify(make_envelope(
                 resp_type="text",
                 results=[],
                 url=None,
-                message=response_text_3,
+                message=normalize_message(response_text_3),
                 thread_id=thread_id
             ))
 
@@ -545,7 +559,7 @@ def send_message():
                     resp_type="text",
                     results=[],
                     url=None,
-                    message=response_text_4,
+                    message=normalize_message(response_text_4),
                     thread_id=thread_id
                 ))
 
@@ -556,7 +570,7 @@ def send_message():
                     resp_type="agenda",
                     results=results,
                     url=agenda_obj.get("URL", ""),
-                    message=agenda_obj.get("Message"),
+                    message=normalize_message(agenda_obj.get("Message")),
                     thread_id=thread_id
                 ))
 
@@ -577,7 +591,7 @@ def send_message():
                         resp_type="agenda",
                         results=agenda_results,
                         url=first_url,
-                        message=agenda_obj.get("Message"),
+                        message=normalize_message(agenda_obj.get("Message")),
                         thread_id=thread_id
                     ))
                 return jsonify(make_envelope(
@@ -593,7 +607,7 @@ def send_message():
                 resp_type="text",
                 results=[],
                 url=None,
-                message=response_text_4,
+                message=normalize_message(response_text_4),
                 thread_id=thread_id
             ))
 
@@ -603,14 +617,13 @@ def send_message():
             resp_type="text",
             results=[],
             url=None,
-            message=response_text,
+            message=normalize_message(response_text),
             thread_id=thread_id
         ))
 
     except Exception as e:
         logger.exception("send_message_error")
-        return jsonify({'error': str(e)}), 500
-
+        return jsonify({'error': 'internal server error'}), 500
 
 @app.route('/apply_filters', methods=['POST'])
 def apply_filters():
@@ -643,7 +656,7 @@ def apply_filters():
                         resp_type="agenda",
                         results=agenda_results,
                         url=agenda_results[0]["link"] if agenda_results else "",
-                        message=search_params.get("message"),
+                        message=normalize_message(search_params.get("message")),
                         thread_id=thread_id
                     ))
                 results_obj = perform_typesense_search(search_params)
@@ -652,7 +665,7 @@ def apply_filters():
                         resp_type="faq",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=results_obj.get("message"),
+                        message=normalize_message(results_obj.get("message")),
                         thread_id=thread_id
                     ))
                 if "results" in results_obj:
@@ -660,14 +673,14 @@ def apply_filters():
                         resp_type="collection",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=results_obj.get("message"),
+                        message=normalize_message(results_obj.get("message")),
                         thread_id=thread_id
                     ))
                 return jsonify(make_envelope(
                     resp_type="text",
                     results=[],
                     url=None,
-                    message=results_obj.get("message", "Er is iets misgegaan bij het toepassen van filters."),
+                    message=normalize_message(results_obj.get("message", "Er is iets misgegaan bij het toepassen van filters.")),
                     thread_id=thread_id
                 ))
 
@@ -685,7 +698,7 @@ def apply_filters():
                         resp_type="agenda",
                         results=agenda_results,
                         url=agenda_results[0]["link"] if agenda_results else "",
-                        message=search_params.get("message"),
+                        message=normalize_message(search_params.get("message")),
                         thread_id=thread_id
                     ))
                 results_obj = perform_typesense_search(search_params)
@@ -694,7 +707,7 @@ def apply_filters():
                         resp_type="faq",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=results_obj.get("message"),
+                        message=normalize_message(results_obj.get("message")),
                         thread_id=thread_id
                     ))
                 if "results" in results_obj:
@@ -702,14 +715,14 @@ def apply_filters():
                         resp_type="collection",
                         results=results_obj.get("results", []),
                         url=None,
-                        message=results_obj.get("message"),
+                        message=normalize_message(results_obj.get("message")),
                         thread_id=thread_id
                     ))
                 return jsonify(make_envelope(
                     resp_type="text",
                     results=[],
                     url=None,
-                    message=results_obj.get("message", "Er is iets misgegaan bij het toepassen van filters (vergelijking)."),
+                    message=normalize_message(results_obj.get("message", "Er is iets misgegaan bij het toepassen van filters (vergelijking).")),
                     thread_id=thread_id
                 ))
 
@@ -725,7 +738,7 @@ def apply_filters():
                     resp_type="text",
                     results=[],
                     url=None,
-                    message=response_text_4,
+                    message=normalize_message(response_text_4),
                     thread_id=thread_id
                 ))
 
@@ -736,7 +749,7 @@ def apply_filters():
                     resp_type="agenda",
                     results=results,
                     url=agenda_obj.get("URL", ""),
-                    message=agenda_obj.get("Message"),
+                    message=normalize_message(agenda_obj.get("Message")),
                     thread_id=thread_id
                 ))
 
@@ -757,7 +770,7 @@ def apply_filters():
                         resp_type="agenda",
                         results=agenda_results,
                         url=first_url,
-                        message=agenda_obj.get("Message"),
+                        message=normalize_message(agenda_obj.get("Message")),
                         thread_id=thread_id
                     ))
 
@@ -766,7 +779,7 @@ def apply_filters():
                 resp_type="text",
                 results=[],
                 url=None,
-                message=response_text_4,
+                message=normalize_message(response_text_4),
                 thread_id=thread_id
             ))
 
@@ -776,14 +789,13 @@ def apply_filters():
             resp_type="text",
             results=[],
             url=None,
-            message=response_text,
+            message=normalize_message(response_text),
             thread_id=thread_id
         ))
 
     except Exception:
         logger.exception("apply_filters_error")
         return jsonify({'error': 'internal server error'}), 500
-
 
 # -------- Proxies voor boeken (PPN -> item_id -> details)
 @app.route('/proxy/resolver', methods=['GET'])
