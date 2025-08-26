@@ -171,19 +171,16 @@ function updateActionButtons() {
     backBtn.style.display = 'none';
 
     if (filterOpen) {
-        // filter open → toon loep (back) + results
         backBtn.style.display = 'inline-flex';
         backBtn.onclick = () => closeFilterPanel(true);
         resultsBtn.style.display = 'inline-flex';
         resultsBtn.disabled = !hasResults;
     } else if (resultOpen) {
-        // results open → toon loep (back) + filters
         backBtn.style.display = 'inline-flex';
         backBtn.onclick = () => closeResultPanel(true);
         filtersBtn.style.display = 'inline-flex';
         filtersBtn.disabled = !hasResults;
     } else {
-        // geen overlay → toon results + filters
         resultsBtn.disabled = !hasResults;
         filtersBtn.disabled = !hasResults;
         resultsBtn.style.display = 'inline-flex';
@@ -213,7 +210,6 @@ async function loadFilterTemplate(type) {
     });
     checkInput();
 }
-
 
 async function startThread() {
     const response = await fetch('/start_thread', { method: 'POST' });
@@ -255,43 +251,46 @@ async function sendMessage() {
         hideLoader();
         clearTimeout(timeoutHandle);
 
-        // === Agenda ===
-        if (data.response && data.response.type === 'agenda') {
-            previousResults = data.response.results || [];
-            displayAgendaResults(previousResults);
-            await loadFilterTemplate("agenda");
-            await sendStatusKlaar();   // alleen hier
-            return;
+        const { response: resp, thread_id: newTid } = data;
+        if (newTid) thread_id = newTid;
+
+        if (resp && resp.message && resp.type !== 'faq') {
+            displayAssistantMessage(resp.message);
         }
 
-        // === FAQ ===
-        if (data.response?.type === 'faq') {
-            const faqResults = data.response.results || [];
-            if (faqResults.length > 0) {
-                displayAssistantMessage(faqResults[0].antwoord);
-            } else {
-                displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
+        switch (resp?.type) {
+            case 'agenda': {
+                previousResults = resp.results || [];
+                displayAgendaResults(previousResults);
+                await loadFilterTemplate("agenda");
+                await sendStatusKlaar();
+                break;
             }
-            document.getElementById("filter-options").innerHTML = "";
-            return;  // geen STATUS:KLAAR
-        }
-
-        // === Conversatie (geen resultaten) ===
-        if (!data.response?.results) {
-            displayAssistantMessage(data.response);
-            return;  // geen STATUS:KLAAR
-        }
-
-        if (data.thread_id) {
-            thread_id = data.thread_id;
-        }
-
-        // === Collectie ===
-        if (data.response?.results) {
-            previousResults = data.response.results;
-            displaySearchResults(previousResults);
-            await loadFilterTemplate("collection");
-            await sendStatusKlaar();   // alleen hier
+            case 'collection': {
+                previousResults = resp.results || [];
+                displaySearchResults(previousResults);
+                await loadFilterTemplate("collection");
+                await sendStatusKlaar();
+                break;
+            }
+            case 'faq': {
+                const faqResults = resp.results || [];
+                if (faqResults.length > 0) {
+                    displayAssistantMessage(faqResults[0].antwoord);
+                } else {
+                    displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
+                }
+                document.getElementById("filter-options").innerHTML = "";
+                previousResults = [];
+                break;
+            }
+            case 'text':
+            default: {
+                displayAssistantMessage(resp?.message || 'Ik heb je vraag niet helemaal begrepen.');
+                document.getElementById("filter-options").innerHTML = "";
+                previousResults = [];
+                break;
+            }
         }
 
         resetFilters();
@@ -302,7 +301,6 @@ async function sendMessage() {
     checkInput();
     scrollToBottom();
 }
-
 
 function resetThread() {
     startThread();
@@ -330,11 +328,15 @@ async function sendStatusKlaar() {
             })
         });
         const data = await response.json();
-        displayAssistantMessage(data.response);
+        const { response: resp } = data || {};
+        if (resp?.message) {
+            displayAssistantMessage(resp.message);
+        } else if (resp && typeof resp === 'string') {
+            displayAssistantMessage(resp);
+        }
         scrollToBottom();
     } catch (error) {}
 }
-
 
 function displayUserMessage(message) {
     const messageContainer = document.getElementById('messages');
@@ -616,20 +618,46 @@ async function applyFiltersAndSend() {
         const data = await response.json();
         hideLoader();
 
-        if (data.response && data.response.type === 'agenda') {
-            previousResults = data.response.results || [];
-            displayAgendaResults(previousResults);
-            await loadFilterTemplate("agenda");
-            await sendStatusKlaar();   // blijft hier
-        } else if (data.results) {
-            previousResults = data.results;
-            displaySearchResults(previousResults);
-            await loadFilterTemplate("collection");
-            await sendStatusKlaar();   // blijft hier
+        const { response: resp, thread_id: newTid } = data;
+        if (newTid) thread_id = newTid;
+
+        if (resp && resp.message && resp.type !== 'faq') {
+            displayAssistantMessage(resp.message);
         }
 
-        if (data.thread_id) {
-            thread_id = data.thread_id;
+        switch (resp?.type) {
+            case 'agenda': {
+                previousResults = resp.results || [];
+                displayAgendaResults(previousResults);
+                await loadFilterTemplate("agenda");
+                await sendStatusKlaar();
+                break;
+            }
+            case 'collection': {
+                previousResults = resp.results || [];
+                displaySearchResults(previousResults);
+                await loadFilterTemplate("collection");
+                await sendStatusKlaar();
+                break;
+            }
+            case 'faq': {
+                const faqResults = resp.results || [];
+                if (faqResults.length > 0) {
+                    displayAssistantMessage(faqResults[0].antwoord);
+                } else {
+                    displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
+                }
+                document.getElementById("filter-options").innerHTML = "";
+                previousResults = [];
+                break;
+            }
+            case 'text':
+            default: {
+                displayAssistantMessage(resp?.message || 'Onbekende filterrespons.');
+                document.getElementById("filter-options").innerHTML = "";
+                previousResults = [];
+                break;
+            }
         }
 
         resetFilters();
@@ -648,7 +676,6 @@ async function applyFiltersAndSend() {
 
     checkInput();
 }
-
 
 function startNewChat() {
     startThread();
@@ -696,8 +723,11 @@ async function sendHelpMessage(message) {
         }
         const data = await response.json();
         hideLoader();
-        if (data.response) {
-            displayAssistantMessage(data.response);
+        const { response: resp } = data || {};
+        if (resp?.message) {
+            displayAssistantMessage(resp.message);
+        } else if (resp && typeof resp === 'string') {
+            displayAssistantMessage(resp);
         }
     } catch (error) {
         hideLoader();
