@@ -24,7 +24,7 @@ assistant_ids = {
     "agenda": os.environ["ASSISTANT_ID_4"],
 }
 
-# === Collections ===
+# Collections verplicht uit ENV
 COLLECTION_BOOKS = os.environ["COLLECTION_BOOKS"]
 COLLECTION_FAQ = os.environ["COLLECTION_FAQ"]
 COLLECTION_EVENTS = os.environ["COLLECTION_EVENTS"]
@@ -38,7 +38,7 @@ if not logger.handlers:
     logger.addHandler(h)
 logger.propagate = False
 
-active_agents = {} 
+active_agents = {}  
 
 @app.before_request
 def _start_timer():
@@ -88,54 +88,7 @@ def normalize_message(raw):
         return raw.get("Message")
     return str(raw)
 
-# === OpenAI helpers (streaming + fallback) ===
-def _collect_assistant_text(thread_id, max_msgs=10):
-    msgs = openai.beta.threads.messages.list(thread_id=thread_id, order="desc", limit=max_msgs)
-    for m in msgs.data:
-        if getattr(m, "role", "") == "assistant":
-            buf = []
-            for part in getattr(m, "content", []):
-                if getattr(part, "type", "") == "text":
-                    buf.append(part.text.value)
-            if buf:
-                return "".join(buf)
-    return ""
-
-def _run_streaming(agent_key, thread_id):
-    buf = []
-    with openai.beta.threads.runs.stream(
-        thread_id=thread_id,
-        assistant_id=assistant_ids[agent_key]
-    ) as stream:
-        for ev in stream:  # context-object is iterabel
-            if getattr(ev, "type", "") == "response.output_text.delta":
-                buf.append(ev.delta)
-        stream.until_done()
-    txt = "".join(buf).strip()
-    if not txt:
-        txt = _collect_assistant_text(thread_id)
-    return txt
-
-def _run_and_poll(agent_key, thread_id, timeout_s=60, poll_interval_s=0.5):
-    run = openai.beta.threads.runs.create(
-        thread_id=thread_id,
-        assistant_id=assistant_ids[agent_key]
-    )
-    start = time.time()
-    while True:
-        run = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
-        if run.status == "completed":
-            break
-        if run.status in ("failed", "cancelled", "expired"):
-            logger.error(f"assistant_run_ended status={run.status} last_error={getattr(run, 'last_error', None)}")
-            return ""
-        if time.time() - start > timeout_s:
-            logger.error("assistant_timeout")
-            return ""
-        time.sleep(poll_interval_s)
-    return _collect_assistant_text(thread_id)
-
-# === OpenAI main call ===
+# === OpenAI main call: streaming ===
 def call_assistant(agent_key, user_input, thread_id=None):
     try:
         if not thread_id:
@@ -149,13 +102,15 @@ def call_assistant(agent_key, user_input, thread_id=None):
 
         logger.info(f"assistant_call agent={agent_key} thread={thread_id} input_len={len(user_input)}")
 
-        # 1) probeer streaming (preferred)
-        try:
-            response_text = _run_streaming(agent_key, thread_id)
-        except Exception as e:
-            logger.warning(f"stream_failed fallback_to_poll err={e}")
-            # 2) fallback: poll tot completed
-            response_text = _run_and_poll(agent_key, thread_id)
+        response_text = ""
+        with openai.beta.threads.runs.stream(
+            thread_id=thread_id,
+            assistant_id=assistant_ids[agent_key]
+        ) as stream:
+            for ev in stream:
+                if getattr(ev, "type", "") == "response.output_text.delta":
+                    response_text += ev.delta
+            stream.until_done()
 
         logger.info(f"assistant_done agent={agent_key} thread={thread_id} output_len={len(response_text)}")
         return response_text, thread_id
@@ -182,7 +137,7 @@ def typesense_search(params, include_fields="short_title,ppn"):
     logger.info(f"typesense_response status={r.status_code}")
     if r.status_code != 200:
         logger.warning(f"typesense_error status={r.status_code} body={r.text[:200]}")
-        return {"error": r.status_code, "message": r.text}
+        return {"results": []}
     data = r.json()["results"][0]["hits"]
     if include_fields == "nativeid":
         logger.info(f"typesense_hits events count={len(data)}")
@@ -190,7 +145,7 @@ def typesense_search(params, include_fields="short_title,ppn"):
     logger.info(f"typesense_hits books count={len(data)}")
     return {"results": [{"ppn": h["document"]["ppn"], "short_title": h["document"]["short_title"]} for h in data]}
 
-# === Agenda: XML API lijst ===
+# === Agenda: OBA resultaten ===
 def fetch_agenda_results(api_url):
     if "authorization=" not in api_url:
         api_url += ("&" if "?" in api_url else "?") + f"authorization={OBA_API_KEY}"
@@ -248,7 +203,6 @@ def fetch_agenda_results(api_url):
 # === Agenda: detail parsing via nativeid ===
 def fetch_event_detail(nativeid):
     try:
-        # JSON detail
         url_json = f'https://zoeken.oba.nl/api/v1/details/?id=|evenementen|{nativeid}&authorization={OBA_API_KEY}&output=json'
         r_json = requests.get(url_json, timeout=15)
         if r_json.status_code != 200:
@@ -266,7 +220,6 @@ def fetch_event_detail(nativeid):
                     deeplink = "http" + parts[1].strip()
                 break
 
-        # XML detail
         url_xml = f'https://zoeken.oba.nl/api/v1/details/?id=|evenementen|{nativeid}&authorization={OBA_API_KEY}'
         r_xml = requests.get(url_xml, timeout=15)
         if r_xml.status_code != 200:
@@ -330,7 +283,7 @@ def handle_search(query, tid):
     try:
         params = json.loads(resp_text)
     except:
-        return error_envelope(resp_text, tid)
+        return jsonify(make_envelope("collection", [], None, resp_text, tid))
     results = typesense_search(params)
     return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
 
@@ -341,7 +294,7 @@ def handle_compare(query, tid):
     try:
         params = json.loads(resp_text)
     except:
-        return error_envelope(resp_text, tid)
+        return jsonify(make_envelope("collection", [], None, resp_text, tid))
     results = typesense_search(params)
     return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
 
@@ -352,14 +305,12 @@ def handle_agenda(query, tid):
     try:
         agenda_obj = json.loads(resp_text)
     except:
-        return error_envelope(resp_text, tid)
+        return jsonify(make_envelope("agenda", [], None, resp_text, tid))
 
-    # Pad 1: directe OBA API URL
     if "API" in agenda_obj and "URL" in agenda_obj:
-        results = fetch_agenda_results(agenda_obj["API"])
+        results = fetch_agenda_results(agenda_obj["API"]) or []
         return jsonify(make_envelope("agenda", results, agenda_obj.get("URL"), agenda_obj.get("Message"), tid))
 
-    # Pad 2: Typesense nativeid → detail merge
     if agenda_obj.get("collection") == COLLECTION_EVENTS:
         params = {
             "q": agenda_obj.get("q", ""),
@@ -373,7 +324,7 @@ def handle_agenda(query, tid):
         first_url = results[0]["link"] if results and results[0].get("link") else ""
         return jsonify(make_envelope("agenda", results, first_url, agenda_obj.get("Message"), tid))
 
-    return error_envelope("Agenda format onbekend", tid)
+    return jsonify(make_envelope("agenda", [], None, agenda_obj.get("Message"), tid))
 
 # === Routes ===
 @app.route("/")
@@ -449,25 +400,6 @@ def proxy_details():
     if r.headers.get('Content-Type', '').startswith('application/json'):
         return jsonify(r.json()), r.status_code, r.headers.items()
     return r.text, r.status_code, r.headers.items()
-
-# === Debug routes (optioneel) ===
-@app.route("/sdk_version")
-def sdk_version():
-    return {"openai_version": openai.__version__}
-
-@app.route("/stream_probe")
-def stream_probe():
-    try:
-        t = openai.beta.threads.create()
-        openai.beta.threads.messages.create(thread_id=t.id, role="user", content="ping")
-        try:
-            out = _run_streaming("router", t.id)
-            return {"mode": "stream", "ok": bool(out), "out_len": len(out)}
-        except Exception as e:
-            fallback = _run_and_poll("router", t.id, timeout_s=20)
-            return {"mode": "poll_fallback", "ok": bool(fallback), "out_len": len(fallback), "stream_err": str(e)}
-    except Exception as e:
-        return {"mode": "error", "err": str(e)}, 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
