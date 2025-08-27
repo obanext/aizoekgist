@@ -139,6 +139,21 @@ function onTouchEnd(e) {
 document.addEventListener('touchstart', onTouchStart, { passive: true });
 document.addEventListener('touchend', onTouchEnd, { passive: true });
 
+function decideAndLoadFilter(results) {
+    if (!results || results.length === 0) {
+        document.getElementById("filter-options").innerHTML = "";
+        return;
+    }
+    const first = results[0];
+    if (first.ppn) {
+        loadFilterTemplate("collection");
+    } else if (first.link) {
+        loadFilterTemplate("agenda");
+    } else {
+        document.getElementById("filter-options").innerHTML = "";
+    }
+}
+
 /* ===== Functionaliteit chat en zoekresultaten ===== */
 function checkInput() {
     const userInput = document.getElementById('user-input').value.trim();
@@ -243,10 +258,8 @@ async function sendMessage() {
                 assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
             })
         });
-        if (!response.ok) {
-            showErrorMessage();
-            return;
-        }
+        if (!response.ok) { showErrorMessage(); return; }
+
         const data = await response.json();
         hideLoader();
         clearTimeout(timeoutHandle);
@@ -255,30 +268,22 @@ async function sendMessage() {
         if (newTid) thread_id = newTid;
 
         switch (resp?.type) {
-            case 'agenda': {
-                previousResults = resp.results || [];
-                displayAgendaResults(previousResults);
-
-                if (resp.url) {
-                    displayAssistantMessage(
-                        `Bekijk alles op <a href="${resp.url}" target="_blank">OBA Agenda</a>`
-                    );
-                }
-                if (resp.message) {
-                    displayAssistantMessage(resp.message);
-                }
-
-                await loadFilterTemplate("agenda");
-                await sendStatusKlaar();
-                break;
-            }
+            case 'agenda':
             case 'collection': {
                 previousResults = resp.results || [];
-                displaySearchResults(previousResults);
-                if (resp.message) {
-                    displayAssistantMessage(resp.message);
+                if (resp.type === 'agenda') {
+                    displayAgendaResults(previousResults);
+                    if (resp.url) {
+                        displayAssistantMessage(
+                            `Bekijk alles op <a href="${resp.url}" target="_blank">OBA Agenda</a>`
+                        );
+                    }
+                } else {
+                    displaySearchResults(previousResults);
                 }
-                await loadFilterTemplate("collection");
+                if (resp.message) displayAssistantMessage(resp.message);
+                decideAndLoadFilter(previousResults);
+                if (resp.type === 'agenda') await sendStatusKlaar();
                 break;
             }
             case 'faq': {
@@ -579,9 +584,9 @@ async function applyFiltersAndSend() {
     const agendaLocation = document.getElementById("agenda-location");
     if (agendaLocation) {
         const location = agendaLocation.value;
-        const age = document.getElementById("agenda-age").value;
-        const date = document.getElementById("agenda-date").value;
-        const type = document.getElementById("agenda-type").value;
+        const age = document.getElementById("agenda-age")?.value || "";
+        const date = document.getElementById("agenda-date")?.value || "";
+        const type = document.getElementById("agenda-type")?.value || "";
 
         const selected = [];
         if (location) selected.push(`Locatie: ${location}`);
@@ -618,10 +623,7 @@ async function applyFiltersAndSend() {
             })
         });
 
-        if (!response.ok) {
-            hideLoader();
-            return;
-        }
+        if (!response.ok) { hideLoader(); return; }
 
         const data = await response.json();
         hideLoader();
@@ -634,16 +636,15 @@ async function applyFiltersAndSend() {
         }
 
         switch (resp?.type) {
-            case 'agenda': {
-                previousResults = resp.results || [];
-                displayAgendaResults(previousResults);
-                await loadFilterTemplate("agenda");
-                break;
-            }
+            case 'agenda':
             case 'collection': {
                 previousResults = resp.results || [];
-                displaySearchResults(previousResults);
-                await loadFilterTemplate("collection");
+                if (resp.type === 'agenda') {
+                    displayAgendaResults(previousResults);
+                } else {
+                    displaySearchResults(previousResults);
+                }
+                decideAndLoadFilter(previousResults);
                 break;
             }
             case 'faq': {
@@ -682,6 +683,7 @@ async function applyFiltersAndSend() {
 
     checkInput();
 }
+
 
 function startNewChat() {
     startThread();
