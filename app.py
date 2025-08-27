@@ -401,5 +401,24 @@ def proxy_details():
         return jsonify(r.json()), r.status_code, r.headers.items()
     return r.text, r.status_code, r.headers.items()
 
+@app.route("/stream_probe")
+def stream_probe():
+    try:
+        t = openai.beta.threads.create()
+        openai.beta.threads.messages.create(thread_id=t.id, role="user", content="ping")
+        out = ""
+        with openai.beta.threads.runs.stream(
+            thread_id=t.id,
+            assistant_id=assistant_ids["router"]
+        ) as s:
+            for ev in s:
+                if getattr(ev, "type", "") == "response.output_text.delta":
+                    out += ev.delta
+            s.until_done()
+        return {"mode": "stream", "ok": bool(out), "out_len": len(out)}
+    except Exception as e:
+        logger.exception("stream_probe_error")
+        return {"mode": "error", "err": str(e)}, 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
