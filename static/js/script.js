@@ -639,14 +639,12 @@ async function applyFiltersAndSend() {
                 previousResults = resp.results || [];
                 displayAgendaResults(previousResults);
                 await loadFilterTemplate("agenda");
-                await sendStatusKlaar();
                 break;
             }
             case 'collection': {
                 previousResults = resp.results || [];
                 displaySearchResults(previousResults);
                 await loadFilterTemplate("collection");
-                await sendStatusKlaar();
                 break;
             }
             case 'faq': {
@@ -678,6 +676,8 @@ async function applyFiltersAndSend() {
             history.replaceState({ panel: 'chat' }, '', location.pathname);
             updateActionButtons();
         }
+
+        await sendStatusKlaar();
 
     } catch (error) {
         hideLoader();
