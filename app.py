@@ -102,10 +102,12 @@ def call_assistant(agent_key, user_input, thread_id=None):
             thread_id=thread_id,
             assistant_id=assistant_ids[agent_key]
         )
+
         response_text = ""
-        for event in stream:
+        for event in stream.events():  
             if event.type == "response.output_text.delta":
                 response_text += event.delta
+
         stream.until_done()
 
         logger.info(f"assistant_done agent={agent_key} thread={thread_id} output_len={len(response_text)}")
