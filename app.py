@@ -284,7 +284,53 @@ def send_message():
     if not resp_text:
         return error_envelope("OpenAI gaf geen output", tid)
 
-if active == "router":
+    if active == "router":
+        try:
+            obj = json.loads(resp_text)
+        except:
+            return jsonify(make_envelope("text", [], None, resp_text, tid))
+
+        marker = obj.get("Marker", "")
+        message = obj.get("Message")
+
+        sq = extract_marker(marker, "SEARCH_QUERY:")
+        cq = extract_marker(marker, "VERGELIJKINGS_QUERY:")
+        aq = extract_marker(marker, "AGENDA_VRAAG:")
+
+        if sq:
+            return handle_search(sq, tid)
+        if cq:
+            return handle_compare(cq, tid)
+        if aq:
+            return handle_agenda(aq, tid)
+
+        return jsonify(make_envelope("text", [], None, message or marker, tid))
+
+    try:
+        params = json.loads(resp_text)
+
+        if active == "search":
+            results = typesense_search(params)
+            return jsonify(make_envelope("collection", results.get("results", []), None, params.get("Message"), tid))
+
+        if active == "compare":
+            results = typesense_search(params)
+            return jsonify(make_envelope("collection", results.get("results", []), None, params.get("Message"), tid))
+
+        if active == "agenda":
+            return handle_agenda(json.dumps(params), tid)
+
+    except:
+        return jsonify(make_envelope(active, [], None, resp_text, tid))
+
+@app.route("/apply_filters", methods=["POST"])
+def apply_filters():
+    data = request.json
+    tid, filters = data["thread_id"], data["filter_values"]
+    resp_text, tid = call_assistant("router", filters, tid)
+    if not resp_text:
+        return error_envelope("Geen response voor filters", tid)
+
     try:
         obj = json.loads(resp_text)
     except:
@@ -305,66 +351,6 @@ if active == "router":
         return handle_agenda(aq, tid)
 
     return jsonify(make_envelope("text", [], None, message or marker, tid))
-
-    try:
-        params = json.loads(resp_text)
-
-        if active == "search":
-            results = typesense_search(params)
-            return jsonify(make_envelope(
-                "collection",
-                results.get("results", []),
-                None,
-                params.get("Message"), 
-                tid
-            ))
-
-        if active == "compare":
-            results = typesense_search(params)
-            return jsonify(make_envelope(
-                "collection",
-                results.get("results", []),
-                None,
-                params.get("Message"), 
-                tid
-            ))
-
-        if active == "agenda":
-            return handle_agenda(json.dumps(params), tid)
-
-    except:
-        return jsonify(make_envelope(active, [], None, resp_text, tid))
-
-
-@app.route("/apply_filters", methods=["POST"])
-def apply_filters():
-    data = request.json
-    tid, filters = data["thread_id"], data["filter_values"]
-    resp_text, tid = call_assistant("router", filters, tid)
-    if not resp_text:
-        return error_envelope("Geen response voor filters", tid)
-
-   try:
-    obj = json.loads(resp_text)
-except:
-    return jsonify(make_envelope("text", [], None, resp_text, tid))
-
-marker = obj.get("Marker", "")
-message = obj.get("Message")
-
-sq = extract_marker(marker, "SEARCH_QUERY:")
-cq = extract_marker(marker, "VERGELIJKINGS_QUERY:")
-aq = extract_marker(marker, "AGENDA_VRAAG:")
-
-if sq:
-    return handle_search(sq, tid)
-if cq:
-    return handle_compare(cq, tid)
-if aq:
-    return handle_agenda(aq, tid)
-
-return jsonify(make_envelope("text", [], None, message or marker, tid))
-
 
 # === Proxies ===
 @app.route('/proxy/resolver')
