@@ -352,6 +352,117 @@ async function sendMessage() {
     scrollToBottom();
 }
 
+async function applyFiltersAndSend() {
+    let filterString = "";
+
+    const agendaLocation = document.getElementById("agenda-location");
+    if (agendaLocation) {
+        const location = agendaLocation.value;
+        const age = document.getElementById("agenda-age").value;
+        const date = document.getElementById("agenda-date").value;
+        const type = document.getElementById("agenda-type").value;
+
+        const selected = [];
+        if (location) selected.push(`Locatie: ${location}`);
+        if (age) selected.push(`Leeftijd: ${age}`);
+        if (date) selected.push(`Wanneer: ${date}`);
+        if (type) selected.push(`Type: ${type}`);
+        filterString = selected.join("||");
+    } else {
+        const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
+        const selected = [];
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) selected.push(checkbox.value);
+        });
+        filterString = selected.join("||");
+    }
+
+    if (filterString === "") return;
+
+    displayUserMessage(`Filters toegepast: ${filterString}`);
+    showLoader();
+
+    document.getElementById('search-results').style.display = 'grid';
+    document.getElementById('detail-container').style.display = 'none';
+    document.getElementById('breadcrumbs').innerHTML = '';
+
+    try {
+        const response = await fetch('/apply_filters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: thread_id,
+                filter_values: filterString,
+                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
+            })
+        });
+
+        if (!response.ok) {
+            hideLoader();
+            return;
+        }
+
+        const data = await response.json();
+        hideLoader();
+
+        const { response: resp, thread_id: newTid } = data;
+        if (newTid) thread_id = newTid;
+
+        if (resp && resp.message && resp.type !== 'faq') {
+            displayAssistantMessage(resp.message);
+        }
+
+        switch (resp?.type) {
+            case 'agenda': {
+                previousResults = resp.results || [];
+                displayAgendaResults(previousResults);
+                await loadFilterTemplate("agenda");
+                break;
+            }
+            case 'collection': {
+                previousResults = resp.results || [];
+                displaySearchResults(previousResults);
+                await loadFilterTemplate("collection");
+                break;
+            }
+            case 'faq': {
+                const faqResults = resp.results || [];
+                if (faqResults.length > 0) {
+                    displayAssistantMessage(faqResults[0].antwoord);
+                } else {
+                    displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
+                }
+                document.getElementById("filter-options").innerHTML = "";
+                previousResults = [];
+                break;
+            }
+            case 'text':
+            default: {
+                displayAssistantMessage(resp?.message || 'Onbekende filterrespons.');
+                document.getElementById("filter-options").innerHTML = "";
+                previousResults = [];
+                break;
+            }
+        }
+
+        resetFilters();
+
+        if (window.innerWidth <= 768) {
+            document.getElementById('filter-section').classList.remove('open');
+            document.getElementById('result-section').classList.remove('open');
+            document.body.classList.remove('panel-open');
+            history.replaceState({ panel: 'chat' }, '', location.pathname);
+            updateActionButtons();
+        }
+
+        await sendStatusKlaar();
+
+    } catch (error) {
+        hideLoader();
+    }
+
+    checkInput();
+}
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
