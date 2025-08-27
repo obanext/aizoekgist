@@ -257,212 +257,73 @@ def start_thread():
     thread = openai.beta.threads.create()
     return jsonify({"thread_id": thread.id})
 
-async function sendMessage() {
-    const userInput = document.getElementById('user-input').value.trim();
-    if (userInput === "") return;
+@app.route("/send_message", methods=["POST"])
+def send_message():
+    data = request.json
+    tid, user_input = data["thread_id"], data["user_input"]
+    active = active_agents.get(tid, "router")
 
-    displayUserMessage(userInput);
-    showLoader();
+    resp_text, tid = call_assistant(active, user_input, tid)
+    if not resp_text:
+        return error_envelope("OpenAI gaf geen output", tid)
 
-    document.getElementById('user-input').value = '';
-    checkInput();
+    if active == "router":
+        sq = extract_marker(resp_text, "SEARCH_QUERY:")
+        cq = extract_marker(resp_text, "VERGELIJKINGS_QUERY:")
+        aq = extract_marker(resp_text, "AGENDA_VRAAG:")
 
-    document.getElementById('search-results').style.display = 'grid';
-    document.getElementById('detail-container').style.display = 'none';
-    document.getElementById('breadcrumbs').innerHTML = '';
+        if sq: return handle_search(sq, tid)
+        if cq: return handle_compare(cq, tid)
+        if aq: return handle_agenda(aq, tid)
+        return jsonify(make_envelope("text", [], None, resp_text, tid))
 
-    timeoutHandle = setTimeout(() => { showErrorMessage(); }, 30000);
+    # vervolgvragen direct als JSON verwerken
+    try:
+        params = json.loads(resp_text)
+        if active == "search":
+            results = typesense_search(params)
+            return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
+        if active == "compare":
+            results = typesense_search(params)
+            return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
+        if active == "agenda":
+            return handle_agenda(json.dumps(params), tid)
+    except:
+        return jsonify(make_envelope(active, [], None, resp_text, tid))
 
-    try {
-        const response = await fetch('/send_message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                thread_id: thread_id,
-                user_input: userInput,
-                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
-            })
-        });
-        if (!response.ok) {
-            showErrorMessage();
-            return;
-        }
-        const data = await response.json();
-        hideLoader();
-        clearTimeout(timeoutHandle);
+@app.route("/apply_filters", methods=["POST"])
+def apply_filters():
+    data = request.json
+    tid, filters = data["thread_id"], data["filter_values"]
+    resp_text, tid = call_assistant("router", filters, tid)
+    if not resp_text:
+        return error_envelope("Geen response voor filters", tid)
 
-        const { response: resp, thread_id: newTid } = data;
-        if (newTid) thread_id = newTid;
+    sq = extract_marker(resp_text, "SEARCH_QUERY:")
+    cq = extract_marker(resp_text, "VERGELIJKINGS_QUERY:")
+    aq = extract_marker(resp_text, "AGENDA_VRAAG:")
 
-        switch (resp?.type) {
-            case 'agenda': {
-                previousResults = resp.results || [];
-                displayAgendaResults(previousResults);
+    if sq: return handle_search(sq, tid)
+    if cq: return handle_compare(cq, tid)
+    if aq: return handle_agenda(aq, tid)
+    return jsonify(make_envelope("text", [], None, resp_text, tid))
 
-                if (resp.url) {
-                    displayAssistantMessage(
-                        `Bekijk alles op <a href="${resp.url}" target="_blank">OBA Agenda</a>`
-                    );
-                }
-                if (resp.message) {
-                    displayAssistantMessage(resp.message);
-                }
+# === Proxies ===
+@app.route('/proxy/resolver')
+def proxy_resolver():
+    ppn = request.args.get('ppn')
+    url = f'https://zoeken.oba.nl/api/v1/resolver/ppn/?id={ppn}&authorization={OBA_API_KEY}'
+    r = requests.get(url, timeout=15)
+    return r.content, r.status_code, r.headers.items()
 
-                await loadFilterTemplate("agenda");
-                break;
-            }
-            case 'collection': {
-                previousResults = resp.results || [];
-                displaySearchResults(previousResults);
-                if (resp.message) {
-                    displayAssistantMessage(resp.message);
-                }
-                await loadFilterTemplate("collection");
-                break;
-            }
-            case 'faq': {
-                const faqResults = resp.results || [];
-                if (faqResults.length > 0) {
-                    displayAssistantMessage(faqResults[0].antwoord);
-                } else {
-                    displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
-                }
-                document.getElementById("filter-options").innerHTML = "";
-                previousResults = [];
-                break;
-            }
-            case 'text':
-            default: {
-                displayAssistantMessage(resp?.message || 'Ik heb je vraag niet helemaal begrepen.');
-                document.getElementById("filter-options").innerHTML = "";
-                previousResults = [];
-                break;
-            }
-        }
-
-        resetFilters();
-
-        await sendStatusKlaar();
-
-    } catch (error) {
-        showErrorMessage();
-    }
-
-    checkInput();
-    scrollToBottom();
-}
-
-async function applyFiltersAndSend() {
-    let filterString = "";
-
-    const agendaLocation = document.getElementById("agenda-location");
-    if (agendaLocation) {
-        const location = agendaLocation.value;
-        const age = document.getElementById("agenda-age").value;
-        const date = document.getElementById("agenda-date").value;
-        const type = document.getElementById("agenda-type").value;
-
-        const selected = [];
-        if (location) selected.push(`Locatie: ${location}`);
-        if (age) selected.push(`Leeftijd: ${age}`);
-        if (date) selected.push(`Wanneer: ${date}`);
-        if (type) selected.push(`Type: ${type}`);
-        filterString = selected.join("||");
-    } else {
-        const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
-        const selected = [];
-        checkboxes.forEach(checkbox => {
-            if (checkbox.checked) selected.push(checkbox.value);
-        });
-        filterString = selected.join("||");
-    }
-
-    if (filterString === "") return;
-
-    displayUserMessage(`Filters toegepast: ${filterString}`);
-    showLoader();
-
-    document.getElementById('search-results').style.display = 'grid';
-    document.getElementById('detail-container').style.display = 'none';
-    document.getElementById('breadcrumbs').innerHTML = '';
-
-    try {
-        const response = await fetch('/apply_filters', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                thread_id: thread_id,
-                filter_values: filterString,
-                assistant_id: 'asst_ejPRaNkIhjPpNHDHCnoI5zKY'
-            })
-        });
-
-        if (!response.ok) {
-            hideLoader();
-            return;
-        }
-
-        const data = await response.json();
-        hideLoader();
-
-        const { response: resp, thread_id: newTid } = data;
-        if (newTid) thread_id = newTid;
-
-        if (resp && resp.message && resp.type !== 'faq') {
-            displayAssistantMessage(resp.message);
-        }
-
-        switch (resp?.type) {
-            case 'agenda': {
-                previousResults = resp.results || [];
-                displayAgendaResults(previousResults);
-                await loadFilterTemplate("agenda");
-                break;
-            }
-            case 'collection': {
-                previousResults = resp.results || [];
-                displaySearchResults(previousResults);
-                await loadFilterTemplate("collection");
-                break;
-            }
-            case 'faq': {
-                const faqResults = resp.results || [];
-                if (faqResults.length > 0) {
-                    displayAssistantMessage(faqResults[0].antwoord);
-                } else {
-                    displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
-                }
-                document.getElementById("filter-options").innerHTML = "";
-                previousResults = [];
-                break;
-            }
-            case 'text':
-            default: {
-                displayAssistantMessage(resp?.message || 'Onbekende filterrespons.');
-                document.getElementById("filter-options").innerHTML = "";
-                previousResults = [];
-                break;
-            }
-        }
-
-        resetFilters();
-
-        if (window.innerWidth <= 768) {
-            document.getElementById('filter-section').classList.remove('open');
-            document.getElementById('result-section').classList.remove('open');
-            document.body.classList.remove('panel-open');
-            history.replaceState({ panel: 'chat' }, '', location.pathname);
-            updateActionButtons();
-        }
-
-        await sendStatusKlaar();
-
-    } catch (error) {
-        hideLoader();
-    }
-
-    checkInput();
-}
+@app.route('/proxy/details')
+def proxy_details():
+    item_id = request.args.get('item_id')
+    url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization={OBA_API_KEY}&output=json'
+    r = requests.get(url, timeout=15)
+    if r.headers.get('Content-Type', '').startswith('application/json'):
+        return jsonify(r.json()), r.status_code, r.headers.items()
+    return r.text, r.status_code, r.headers.items()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
