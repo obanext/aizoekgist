@@ -56,13 +56,14 @@ def _handle_error(e):
     return jsonify({"error": "internal server error"}), 500
 
 # === Helpers ===
-def make_envelope(resp_type, results=None, url=None, message=None, thread_id=None):
+def make_envelope(resp_type, results=None, url=None, message=None, thread_id=None, location=None):
     return {
         "response": {
             "type": resp_type,
             "url": url,
             "message": normalize_message(message),
-            "results": results or []
+            "results": results or [],
+            "location": location 
         },
         "thread_id": thread_id
     }
