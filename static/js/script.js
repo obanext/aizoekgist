@@ -279,7 +279,6 @@ async function sendMessage() {
                     displayAssistantMessage(resp.message);
                 }
                 await loadFilterTemplate("collection");
-                await sendStatusKlaar();
                 break;
             }
             case 'faq': {
@@ -676,8 +675,6 @@ async function applyFiltersAndSend() {
             history.replaceState({ panel: 'chat' }, '', location.pathname);
             updateActionButtons();
         }
-
-        await sendStatusKlaar();
 
     } catch (error) {
         hideLoader();
