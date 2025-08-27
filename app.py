@@ -207,11 +207,14 @@ def handle_search(query, tid):
     try:
         params = json.loads(resp_text)
     except:
-        return jsonify(make_envelope("collection", [], None, resp_text, tid))
+        return jsonify(make_envelope("text", [], None, resp_text, tid))
 
     results = typesense_search(params)
+
+    resp_type = "faq" if params.get("collection") == COLLECTION_FAQ else "collection"
+
     return jsonify(make_envelope(
-        "collection",
+        resp_type,
         results.get("results", []),
         None,
         params.get("Message"),
