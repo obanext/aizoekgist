@@ -24,7 +24,7 @@ assistant_ids = {
     "agenda": os.environ["ASSISTANT_ID_4"],
 }
 
-# Collections
+# Collections verplicht uit ENV
 COLLECTION_BOOKS = os.environ["COLLECTION_BOOKS"]
 COLLECTION_FAQ = os.environ["COLLECTION_FAQ"]
 COLLECTION_EVENTS = os.environ["COLLECTION_EVENTS"]
@@ -87,11 +87,6 @@ def normalize_message(raw):
     return str(raw)
 
 # === OpenAI ===
-class CustomEventHandler(openai.AssistantEventHandler):
-    def __init__(self): self.response_text = ""
-    def on_text_created(self, text): self.response_text = ""
-    def on_text_delta(self, delta, snapshot): self.response_text += delta.value
-
 def call_assistant(agent_key, user_input, thread_id=None):
     try:
         if not thread_id:
@@ -102,11 +97,20 @@ def call_assistant(agent_key, user_input, thread_id=None):
             openai.beta.threads.messages.create(thread_id=thread_id, role="user", content=user_input)
 
         logger.info(f"assistant_call agent={agent_key} thread={thread_id} input_len={len(user_input)}")
-        handler = CustomEventHandler()
-        with openai.beta.threads.runs.stream(thread_id=thread_id, assistant_id=assistant_ids[agent_key], event_handler=handler) as stream:
-            stream.until_done()
-        logger.info(f"assistant_done agent={agent_key} thread={thread_id} output_len={len(handler.response_text)}")
-        return handler.response_text, thread_id
+
+        stream = openai.beta.threads.runs.stream(
+            thread_id=thread_id,
+            assistant_id=assistant_ids[agent_key]
+        )
+        response_text = ""
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                response_text += event.delta
+        stream.until_done()
+
+        logger.info(f"assistant_done agent={agent_key} thread={thread_id} output_len={len(response_text)}")
+        return response_text, thread_id
+
     except Exception:
         logger.exception("openai_error")
         return "", thread_id
