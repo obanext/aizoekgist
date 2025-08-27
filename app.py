@@ -24,7 +24,7 @@ assistant_ids = {
     "agenda": os.environ["ASSISTANT_ID_4"],
 }
 
-# Collections verplicht uit ENV
+# === Collections
 COLLECTION_BOOKS = os.environ["COLLECTION_BOOKS"]
 COLLECTION_FAQ = os.environ["COLLECTION_FAQ"]
 COLLECTION_EVENTS = os.environ["COLLECTION_EVENTS"]
