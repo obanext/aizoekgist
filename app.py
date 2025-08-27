@@ -203,22 +203,39 @@ def build_agenda_results_from_nativeids(nativeids):
 def handle_search(query, tid):
     active_agents[tid] = "search"
     resp_text, tid = call_assistant("search", query, tid)
+
     try:
         params = json.loads(resp_text)
     except:
         return jsonify(make_envelope("collection", [], None, resp_text, tid))
+
     results = typesense_search(params)
-    return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
+    return jsonify(make_envelope(
+        "collection",
+        results.get("results", []),
+        None,
+        params.get("Message"),
+        tid
+    ))
+
 
 def handle_compare(query, tid):
     active_agents[tid] = "compare"
     resp_text, tid = call_assistant("compare", query, tid)
+
     try:
         params = json.loads(resp_text)
     except:
         return jsonify(make_envelope("collection", [], None, resp_text, tid))
+
     results = typesense_search(params)
-    return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
+    return jsonify(make_envelope(
+        "collection",
+        results.get("results", []),
+        None,
+        params.get("Message"),  
+        tid
+    ))
 
 def handle_agenda(query, tid):
     active_agents[tid] = "agenda"
@@ -272,24 +289,44 @@ def send_message():
         cq = extract_marker(resp_text, "VERGELIJKINGS_QUERY:")
         aq = extract_marker(resp_text, "AGENDA_VRAAG:")
 
-        if sq: return handle_search(sq, tid)
-        if cq: return handle_compare(cq, tid)
-        if aq: return handle_agenda(aq, tid)
+        if sq:
+            return handle_search(sq, tid)
+        if cq:
+            return handle_compare(cq, tid)
+        if aq:
+            return handle_agenda(aq, tid)
+
         return jsonify(make_envelope("text", [], None, resp_text, tid))
 
-    # vervolgvragen direct als JSON verwerken
     try:
         params = json.loads(resp_text)
+
         if active == "search":
             results = typesense_search(params)
-            return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
+            return jsonify(make_envelope(
+                "collection",
+                results.get("results", []),
+                None,
+                params.get("Message"), 
+                tid
+            ))
+
         if active == "compare":
             results = typesense_search(params)
-            return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
+            return jsonify(make_envelope(
+                "collection",
+                results.get("results", []),
+                None,
+                params.get("Message"), 
+                tid
+            ))
+
         if active == "agenda":
             return handle_agenda(json.dumps(params), tid)
+
     except:
         return jsonify(make_envelope(active, [], None, resp_text, tid))
+
 
 @app.route("/apply_filters", methods=["POST"])
 def apply_filters():
