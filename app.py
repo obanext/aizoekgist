@@ -284,19 +284,27 @@ def send_message():
     if not resp_text:
         return error_envelope("OpenAI gaf geen output", tid)
 
-    if active == "router":
-        sq = extract_marker(resp_text, "SEARCH_QUERY:")
-        cq = extract_marker(resp_text, "VERGELIJKINGS_QUERY:")
-        aq = extract_marker(resp_text, "AGENDA_VRAAG:")
-
-        if sq:
-            return handle_search(sq, tid)
-        if cq:
-            return handle_compare(cq, tid)
-        if aq:
-            return handle_agenda(aq, tid)
-
+if active == "router":
+    try:
+        obj = json.loads(resp_text)
+    except:
         return jsonify(make_envelope("text", [], None, resp_text, tid))
+
+    marker = obj.get("Marker", "")
+    message = obj.get("Message")
+
+    sq = extract_marker(marker, "SEARCH_QUERY:")
+    cq = extract_marker(marker, "VERGELIJKINGS_QUERY:")
+    aq = extract_marker(marker, "AGENDA_VRAAG:")
+
+    if sq:
+        return handle_search(sq, tid)
+    if cq:
+        return handle_compare(cq, tid)
+    if aq:
+        return handle_agenda(aq, tid)
+
+    return jsonify(make_envelope("text", [], None, message or marker, tid))
 
     try:
         params = json.loads(resp_text)
@@ -336,14 +344,27 @@ def apply_filters():
     if not resp_text:
         return error_envelope("Geen response voor filters", tid)
 
-    sq = extract_marker(resp_text, "SEARCH_QUERY:")
-    cq = extract_marker(resp_text, "VERGELIJKINGS_QUERY:")
-    aq = extract_marker(resp_text, "AGENDA_VRAAG:")
-
-    if sq: return handle_search(sq, tid)
-    if cq: return handle_compare(cq, tid)
-    if aq: return handle_agenda(aq, tid)
+   try:
+    obj = json.loads(resp_text)
+except:
     return jsonify(make_envelope("text", [], None, resp_text, tid))
+
+marker = obj.get("Marker", "")
+message = obj.get("Message")
+
+sq = extract_marker(marker, "SEARCH_QUERY:")
+cq = extract_marker(marker, "VERGELIJKINGS_QUERY:")
+aq = extract_marker(marker, "AGENDA_VRAAG:")
+
+if sq:
+    return handle_search(sq, tid)
+if cq:
+    return handle_compare(cq, tid)
+if aq:
+    return handle_agenda(aq, tid)
+
+return jsonify(make_envelope("text", [], None, message or marker, tid))
+
 
 # === Proxies ===
 @app.route('/proxy/resolver')
