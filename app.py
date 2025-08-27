@@ -55,6 +55,11 @@ def _handle_error(e):
     logger.exception("unhandled_error")
     return jsonify({"error": "internal server error"}), 500
 
+# === Debug route: SDK versie ===
+@app.route("/sdk_version")
+def sdk_version():
+    return {"openai_version": openai.__version__}
+
 # === Helpers ===
 def make_envelope(resp_type, results=None, url=None, message=None, thread_id=None):
     return {
