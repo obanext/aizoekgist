@@ -130,28 +130,47 @@ def call_assistant(agent_key, user_input, thread_id=None):
         return "", thread_id
 
 # === Typesense ===
-def typesense_search(params, include_fields="short_title,ppn"):
+def typesense_search(params, include_fields=None):
     headers = {"Content-Type": "application/json", "X-TYPESENSE-API-KEY": TYPESENSE_API_KEY}
+
     body = {"searches": [{
         "q": params.get("q"),
         "query_by": params.get("query_by"),
         "collection": params.get("collection"),
         "prefix": "false",
         "vector_query": params.get("vector_query"),
-        "include_fields": include_fields,
+        "include_fields": include_fields or "*",
         "per_page": 15,
         "filter_by": params.get("filter_by")
     }]}
+
     logger.info(f"typesense_request collection={params.get('collection')} q_len={len(params.get('q',''))}")
     r = requests.post(TYPESENSE_API_URL, headers=headers, json=body, timeout=15)
     logger.info(f"typesense_response status={r.status_code}")
     if r.status_code != 200:
         logger.warning(f"typesense_error status={r.status_code} body={r.text[:200]}")
         return {"results": []}
+
     data = r.json()["results"][0]["hits"]
-    if include_fields == "nativeid":
-        return [h["document"].get("nativeid") for h in data if h.get("document")]
-    return {"results": [{"ppn": h["document"]["ppn"], "short_title": h["document"]["short_title"]} for h in data]}
+
+    collection = params.get("collection")
+    if collection == COLLECTION_FAQ:
+        # FAQ resultaten
+        return {"results": [
+            {
+                "vraag": h["document"].get("vraag"),
+                "antwoord": h["document"].get("antwoord")
+            } for h in data if h.get("document")
+        ]}
+    else:
+        # Boeken resultaten
+        return {"results": [
+            {
+                "ppn": h["document"].get("ppn"),
+                "short_title": h["document"].get("short_title")
+            } for h in data if h.get("document")
+        ]}
+
 
 # === Agenda detail ===
 def fetch_agenda_results(api_url):
@@ -211,6 +230,7 @@ def handle_search(query, tid):
 
     results = typesense_search(params)
 
+    # Kies type op basis van collectie
     resp_type = "faq" if params.get("collection") == COLLECTION_FAQ else "collection"
 
     return jsonify(make_envelope(
@@ -220,7 +240,6 @@ def handle_search(query, tid):
         params.get("Message"),
         tid
     ))
-
 
 def handle_compare(query, tid):
     active_agents[tid] = "compare"
