@@ -94,7 +94,11 @@ def call_assistant(agent_key, user_input, thread_id=None):
             thread_id = thread.id
             logger.info(f"thread_new id={thread_id}")
         else:
-            openai.beta.threads.messages.create(thread_id=thread_id, role="user", content=user_input)
+            openai.beta.threads.messages.create(
+                thread_id=thread_id,
+                role="user",
+                content=user_input
+            )
 
         logger.info(f"assistant_call agent={agent_key} thread={thread_id} input_len={len(user_input)}")
 
@@ -104,7 +108,7 @@ def call_assistant(agent_key, user_input, thread_id=None):
         )
 
         response_text = ""
-        for event in stream.events():  
+        for event in stream.events():  # gebruik de officiële event API
             if event.type == "response.output_text.delta":
                 response_text += event.delta
 
