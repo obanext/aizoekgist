@@ -88,7 +88,7 @@ def normalize_message(raw):
         return raw.get("Message")
     return str(raw)
 
-# === OpenAI main call: streaming  ===
+# === OpenAI main call: streaming (met juiste event-loop) ===
 def call_assistant(agent_key, user_input, thread_id=None):
     try:
         if not thread_id:
@@ -149,19 +149,15 @@ def typesense_search(params, include_fields="short_title,ppn"):
         return {"results": []}
     data = r.json()["results"][0]["hits"]
     if include_fields == "nativeid":
-        logger.info(f"typesense_hits events count={len(data)}")
         return [h["document"].get("nativeid") for h in data if h.get("document")]
-    logger.info(f"typesense_hits books count={len(data)}")
     return {"results": [{"ppn": h["document"]["ppn"], "short_title": h["document"]["short_title"]} for h in data]}
 
 # === Agenda detail ===
 def fetch_agenda_results(api_url):
     if "authorization=" not in api_url:
         api_url += ("&" if "?" in api_url else "?") + f"authorization={OBA_API_KEY}"
-    logger.info(f"agenda_fetch url={api_url}")
     r = requests.get(api_url, timeout=15)
     if r.status_code != 200:
-        logger.warning(f"agenda_error status={r.status_code}")
         return []
     root = ET.fromstring(r.text)
     out = []
@@ -171,7 +167,6 @@ def fetch_agenda_results(api_url):
         link = (res.findtext(".//custom/evenement/deeplink") or "").strip()
         summary = (res.findtext(".//summaries/summary") or "").strip()
         out.append({"title": title, "cover": cover, "link": link, "summary": summary})
-    logger.info(f"agenda_results count={len(out)}")
     return out
 
 def fetch_event_detail(nativeid):
@@ -181,7 +176,6 @@ def fetch_event_detail(nativeid):
         if r_json.status_code != 200:
             return None
         data = r_json.json().get("record", {})
-
         title = data.get("titles", [""])[0] if isinstance(data.get("titles"), list) else ""
         summary = data.get("summaries", [""])[0] if isinstance(data.get("summaries"), list) else ""
         cover = data.get("coverimages", [""])[0] if isinstance(data.get("coverimages"), list) else ""
@@ -194,7 +188,6 @@ def fetch_event_detail(nativeid):
                 break
         return {"title": title or "Geen titel", "cover": cover, "link": deeplink, "summary": summary}
     except:
-        logger.exception("event_detail_error")
         return None
 
 def build_agenda_results_from_nativeids(nativeids):
@@ -203,12 +196,10 @@ def build_agenda_results_from_nativeids(nativeids):
         detail = fetch_event_detail(nid)
         if detail:
             results.append(detail)
-    logger.info(f"agenda_build count_in={len(nativeids)} count_out={len(results)}")
     return results
 
 # === Core Handlers ===
 def handle_search(query, tid):
-    logger.info(f"handler_search thread={tid}")
     active_agents[tid] = "search"
     resp_text, tid = call_assistant("search", query, tid)
     try:
@@ -219,7 +210,6 @@ def handle_search(query, tid):
     return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
 
 def handle_compare(query, tid):
-    logger.info(f"handler_compare thread={tid}")
     active_agents[tid] = "compare"
     resp_text, tid = call_assistant("compare", query, tid)
     try:
@@ -230,7 +220,6 @@ def handle_compare(query, tid):
     return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
 
 def handle_agenda(query, tid):
-    logger.info(f"handler_agenda thread={tid}")
     active_agents[tid] = "agenda"
     resp_text, tid = call_assistant("agenda", query, tid)
     try:
@@ -265,7 +254,6 @@ def index():
 @app.route("/start_thread", methods=["POST"])
 def start_thread():
     thread = openai.beta.threads.create()
-    logger.info(f"thread_start id={thread.id}")
     return jsonify({"thread_id": thread.id})
 
 @app.route("/send_message", methods=["POST"])
@@ -274,29 +262,38 @@ def send_message():
     tid, user_input = data["thread_id"], data["user_input"]
     active = active_agents.get(tid, "router")
 
-    logger.info(f"send_message thread={tid} active_agent={active}")
     resp_text, tid = call_assistant(active, user_input, tid)
     if not resp_text:
         return error_envelope("OpenAI gaf geen output", tid)
 
-    sq = extract_marker(resp_text, "SEARCH_QUERY:")
-    cq = extract_marker(resp_text, "VERGELIJKINGS_QUERY:")
-    aq = extract_marker(resp_text, "AGENDA_VRAAG:")
+    if active == "router":
+        sq = extract_marker(resp_text, "SEARCH_QUERY:")
+        cq = extract_marker(resp_text, "VERGELIJKINGS_QUERY:")
+        aq = extract_marker(resp_text, "AGENDA_VRAAG:")
 
-    if sq:
-        return handle_search(sq, tid)
-    if cq:
-        return handle_compare(cq, tid)
-    if aq:
-        return handle_agenda(aq, tid)
-    return jsonify(make_envelope("text", [], None, resp_text, tid))
+        if sq: return handle_search(sq, tid)
+        if cq: return handle_compare(cq, tid)
+        if aq: return handle_agenda(aq, tid)
+        return jsonify(make_envelope("text", [], None, resp_text, tid))
+
+    # vervolgvragen direct als JSON verwerken
+    try:
+        params = json.loads(resp_text)
+        if active == "search":
+            results = typesense_search(params)
+            return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
+        if active == "compare":
+            results = typesense_search(params)
+            return jsonify(make_envelope("collection", results.get("results", []), None, None, tid))
+        if active == "agenda":
+            return handle_agenda(json.dumps(params), tid)
+    except:
+        return jsonify(make_envelope(active, [], None, resp_text, tid))
 
 @app.route("/apply_filters", methods=["POST"])
 def apply_filters():
     data = request.json
     tid, filters = data["thread_id"], data["filter_values"]
-    logger.info(f"apply_filters thread={tid} values_len={len(filters)}")
-
     resp_text, tid = call_assistant("router", filters, tid)
     if not resp_text:
         return error_envelope("Geen response voor filters", tid)
@@ -305,12 +302,9 @@ def apply_filters():
     cq = extract_marker(resp_text, "VERGELIJKINGS_QUERY:")
     aq = extract_marker(resp_text, "AGENDA_VRAAG:")
 
-    if sq:
-        return handle_search(sq, tid)
-    if cq:
-        return handle_compare(cq, tid)
-    if aq:
-        return handle_agenda(aq, tid)
+    if sq: return handle_search(sq, tid)
+    if cq: return handle_compare(cq, tid)
+    if aq: return handle_agenda(aq, tid)
     return jsonify(make_envelope("text", [], None, resp_text, tid))
 
 # === Proxies ===
@@ -318,7 +312,6 @@ def apply_filters():
 def proxy_resolver():
     ppn = request.args.get('ppn')
     url = f'https://zoeken.oba.nl/api/v1/resolver/ppn/?id={ppn}&authorization={OBA_API_KEY}'
-    logger.info(f"proxy_resolver url={url}")
     r = requests.get(url, timeout=15)
     return r.content, r.status_code, r.headers.items()
 
@@ -326,7 +319,6 @@ def proxy_resolver():
 def proxy_details():
     item_id = request.args.get('item_id')
     url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization={OBA_API_KEY}&output=json'
-    logger.info(f"proxy_details url={url}")
     r = requests.get(url, timeout=15)
     if r.headers.get('Content-Type', '').startswith('application/json'):
         return jsonify(r.json()), r.status_code, r.headers.items()
