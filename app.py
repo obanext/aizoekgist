@@ -108,9 +108,9 @@ def call_assistant(agent_key, user_input, thread_id=None):
             assistant_id=assistant_ids[agent_key]
         ) as stream:
             for ev in stream:
-                # 🔎 log alle events die binnenkomen
-                logger.info(f"STREAM EVENT type={ev.type} | data={ev.__dict__}")
-                if getattr(ev, "type", "") == "response.output_text.delta":
+                etype = getattr(ev, "type", None)
+                logger.info(f"STREAM EVENT class={ev.__class__.__name__} type={etype} raw={ev}")
+                if etype == "response.output_text.delta":
                     response_text += ev.delta
             stream.until_done()
 
