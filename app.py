@@ -63,7 +63,7 @@ def make_envelope(resp_type, results=None, url=None, message=None, thread_id=Non
             "url": url,
             "message": normalize_message(message),
             "results": results or [],
-            "location": location 
+            "location": location
         },
         "thread_id": thread_id
     }
@@ -255,7 +255,7 @@ def handle_compare(query, tid):
         "collection",
         results.get("results", []),
         None,
-        params.get("Message"),  
+        params.get("Message"),
         tid
     ))
 
@@ -312,7 +312,7 @@ def send_message():
         except:
             return jsonify(make_envelope("text", [], None, resp_text, tid))
 
-        marker = obj.get("Marker", "")
+        marker = obj.get("Marker","")
         message = obj.get("Message")
 
         sq = extract_marker(marker, "SEARCH_QUERY:")
