@@ -8,6 +8,10 @@ from datetime import datetime
 import logging
 import time
 
+from openai import conversations
+
+from services import conversations_client
+
 app = Flask(__name__)
 app.secret_key = os.environ["SECRET_KEY"]
 
@@ -293,57 +297,62 @@ def index():
 
 @app.route("/start_thread", methods=["POST"])
 def start_thread():
-    thread = openai.beta.threads.create()
-    return jsonify({"thread_id": thread.id})
+    #thread = openai.beta.threads.create()
+    #return jsonify({"thread_id": thread.id})
+    conversation = conversations_client.create_conversation()
+    return jsonify({"thread_id": conversation})
 
 @app.route("/send_message", methods=["POST"])
 def send_message():
     data = request.json
-    tid, user_input = data["thread_id"], data["user_input"]
-    active = active_agents.get(tid, "router")
+    conversationreply = conversations_client.ask_with_tools(data["thread_id"], data["user_input"])
+    print(conversationreply)
+    return conversationreply
+    #tid, user_input = data["thread_id"], data["user_input"]
+    #active = active_agents.get(tid, "router")
 
-    resp_text, tid = call_assistant(active, user_input, tid)
-    if not resp_text:
-        return error_envelope("OpenAI gaf geen output", tid)
+    #resp_text, tid = call_assistant(active, user_input, tid)
+    #if not resp_text:
+    #    return error_envelope("OpenAI gaf geen output", tid)
 
-    if active == "router":
-        try:
-            obj = json.loads(resp_text)
-        except:
-            return jsonify(make_envelope("text", [], None, resp_text, tid))
+    #if active == "router":
+    #    try:
+    #        obj = json.loads(resp_text)
+    #    except:
+    #        return jsonify(make_envelope("text", [], None, resp_text, tid))
 
-        marker = obj.get("Marker","")
-        message = obj.get("Message")
+    #    marker = obj.get("Marker","")
+    #    message = obj.get("Message")
 
-        sq = extract_marker(marker, "SEARCH_QUERY:")
-        cq = extract_marker(marker, "VERGELIJKINGS_QUERY:")
-        aq = extract_marker(marker, "AGENDA_VRAAG:")
+    #    sq = extract_marker(marker, "SEARCH_QUERY:")
+    #    cq = extract_marker(marker, "VERGELIJKINGS_QUERY:")
+    #    aq = extract_marker(marker, "AGENDA_VRAAG:")
 
-        if sq:
-            return handle_search(sq, tid)
-        if cq:
-            return handle_compare(cq, tid)
-        if aq:
-            return handle_agenda(aq, tid)
+    #    if sq:
+    #        return handle_search(sq, tid)
+    #    if cq:
+    #        return handle_compare(cq, tid)
+    #    if aq:
+    #        return handle_agenda(aq, tid)
 
-        return jsonify(make_envelope("text", [], None, message or marker, tid))
+    #    return jsonify(make_envelope("text", [], None, message or marker, tid))
 
-    try:
-        params = json.loads(resp_text)
+    #try:
+    #    params = json.loads(resp_text)
 
-        if active == "search":
-            results = typesense_search(params)
-            return jsonify(make_envelope("collection", results.get("results", []), None, params.get("Message"), tid))
+    #    if active == "search":
+    #        results = typesense_search(params)
+    #        return jsonify(make_envelope("collection", results.get("results", []), None, params.get("Message"), tid))
 
-        if active == "compare":
-            results = typesense_search(params)
-            return jsonify(make_envelope("collection", results.get("results", []), None, params.get("Message"), tid))
+    #    if active == "compare":
+    #        results = typesense_search(params)
+    #        return jsonify(make_envelope("collection", results.get("results", []), None, params.get("Message"), tid))
 
-        if active == "agenda":
-            return handle_agenda(json.dumps(params), tid)
+    #    if active == "agenda":
+    #        return handle_agenda(json.dumps(params), tid)
 
-    except:
-        return jsonify(make_envelope(active, [], None, resp_text, tid))
+    #except:
+    #    return jsonify(make_envelope(active, [], None, resp_text, tid))
 
 @app.route("/apply_filters", methods=["POST"])
 def apply_filters():

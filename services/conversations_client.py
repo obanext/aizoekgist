@@ -21,6 +21,7 @@ FASTMODEL = "gpt-4.1-nano"
 SYSTEM = "Je bent Nexi. Antwoord kort (B1), in de taal van de gebruiker."
 
 def create_conversation() -> str:
+    print("Creating conversation...")
     return client.conversations.create().id
 
 def _extract_tool_calls(resp) -> List[Any]:
@@ -50,7 +51,8 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
     # 2) Geen tools nodig? → direct modeltekst terug
     calls = _extract_tool_calls(resp)
     if not calls:
-        return (resp.output_text or "").strip()
+        text = (resp.output_text or "").strip()
+        return make_envelope("text", results=[], url=None, message=text, thread_id=conversation_id)
 
     # 3) Tools uitvoeren en envelope bepalen
     outputs: List[Dict[str, str]] = []
@@ -79,18 +81,31 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
             else:
                 envelope = make_envelope("text", results=[], url=None, message=msg, thread_id=conversation_id)
 
+        # ... in ask_with_tools(), binnen de for-call lus:
         elif name == "build_agenda_query":
             msg = result.get("Message")
+            # 🔎 Debug: laat zien wat de tool oplevert
+            print(f"[AGENDA] tool result keys={list(result.keys())}", flush=True)
             if "API" in result and "URL" in result:
+                print(f"[AGENDA] API URL -> {result['API']}", flush=True)
                 ag_results = fetch_agenda_results(result["API"])
-                envelope = make_envelope("agenda", results=ag_results, url=result.get("URL"), message=msg, thread_id=conversation_id)
+                print(f"[AGENDA] parsed items = {len(ag_results)}", flush=True)
+
+                envelope = make_envelope(
+                    "agenda",
+                    results=ag_results,
+                    url=result.get("URL"),
+                    message=msg,
+                    thread_id=conversation_id
+                )
+
             elif result.get("collection") == COLLECTION_EVENTS:
-                envelope = make_envelope("agenda", results=[], url=None, message=msg, thread_id=conversation_id)
-            else:
+                print("[AGENDA] no API/URL; using COLLECTION_EVENTS branch (embedding).", flush=True)
                 envelope = make_envelope("agenda", results=[], url=None, message=msg, thread_id=conversation_id)
 
-        else:
-            envelope = make_envelope("text", results=[], url=None, message="Nog niet ondersteund.", thread_id=conversation_id)
+            else:
+                print("[AGENDA] unexpected branch; missing API/URL and no EVENTS collection.", flush=True)
+                envelope = make_envelope("agenda", results=[], url=None, message=msg, thread_id=conversation_id)
 
         outputs.append({
             "type": "function_call_output",

@@ -80,26 +80,46 @@ def typesense_search_books(params: Dict[str, Any]) -> List[Dict[str, Any]]:
         return []
 
 # --- OBA Agenda ---
+# services/oba_helpers.py
+
 def fetch_agenda_results(api_url: str) -> List[Dict[str, Any]]:
     """Fetch agenda XML en geef lijst met {title, cover, link, summary} terug."""
     if not api_url:
+        print("[AGENDA][fetch] empty api_url", flush=True)
         return []
 
     if "authorization=" not in api_url:
         api_url += ("&" if "?" in api_url else "?") + f"authorization={OBA_API_KEY}"
 
     try:
+        print(f"[AGENDA][fetch] GET {api_url}", flush=True)
         r = requests.get(api_url, timeout=15)
+        print(f"[AGENDA][fetch] status={r.status_code}", flush=True)
         if r.status_code != 200:
+            print(f"[AGENDA][fetch] body(start)={r.text[:400]!r}", flush=True)
             return []
-        root = ET.fromstring(r.text)
+
+        try:
+            root = ET.fromstring(r.text)
+        except Exception as e:
+            print(f"[AGENDA][fetch] XML parse error: {e}", flush=True)
+            print(f"[AGENDA][fetch] body(start)={r.text[:400]!r}", flush=True)
+            return []
+
+        nodes = root.findall(".//result")
+        print(f"[AGENDA][fetch] result nodes={len(nodes)}", flush=True)
+
         out: List[Dict[str, Any]] = []
-        for res in root.findall(".//result"):
+        for res in nodes:
             title = (res.findtext(".//titles/title") or "").strip() or "Geen titel"
             cover = (res.findtext(".//coverimages/coverimage") or "").strip()
             link = (res.findtext(".//custom/evenement/deeplink") or "").strip()
             summary = (res.findtext(".//summaries/summary") or "").strip()
             out.append({"title": title, "cover": cover, "link": link, "summary": summary})
+
         return out
-    except Exception:
+
+    except Exception as e:
+        print(f"[AGENDA][fetch] request error: {e}", flush=True)
         return []
+
