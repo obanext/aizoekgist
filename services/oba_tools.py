@@ -10,6 +10,26 @@ COLLECTION_BOOKS  = os.getenv("COLLECTION_BOOKS",  "obadb30725")
 COLLECTION_FAQ    = os.getenv("COLLECTION_FAQ",    "obafaq")
 COLLECTION_EVENTS = os.getenv("COLLECTION_EVENTS", "obadbevents")
 
+#Boek filter opties
+IND_FICTION = [
+    "prentenboeken baby",
+    "prentenboeken tot 4 jaar",
+    "prentenboeken vanaf 4 jaar",
+    "fictie tot 9 jaar",
+    "fictie 9 tot 12 jaar",
+    "fictie vanaf 12 jaar",
+    "fictie vanaf 15 jaar",
+    "fictie Volwassenen",
+]
+IND_NONFICTION = [
+    "info tot 9 jaar",
+    "info vanaf 9 jaar",
+    "info volwassenen",
+]
+IND_ALL = IND_FICTION + IND_NONFICTION
+LANG_HINTS = ["Nederlands", "Engels", "Duits", "Frans", "Spaans", "Turks", "Arabisch"]  # uitbreidbaar
+
+# Agenda filter opties
 AGENDA_LOCATIONS = [
     "Centrale OBA", "OBA Banne", "OBA Bijlmer", "OBA Bos en Lommer", "OBA Buitenveldert",
     "OBA CC Amstel", "OBA De Hallen", "OBA Duivendrecht", "OBA Geuzenveld", "OBA IJburg",
@@ -39,16 +59,59 @@ TOOLS: List[Dict[str, Any]] = [
     {
         "type": "function",
         "name": "build_search_params",
-        "description": "Zet [ZOEKVRAAG] om naar Typesense-zoekparameters (collectie/embedding/filters).",
+        "description": (
+            "Zet [ZOEKVRAAG] om naar Typesense-zoekparameters. "
+            "Kies collectie & query_by volgens de regels:\n"
+            "- OBA Next / (Lab) Kraaiennest → collection=obafaq, query_by=embedding, alpha=0.8.\n"
+            "- Directe titel of auteur → 1 keuze voor query_by (short_title of main_author), géén vector.\n"
+            "- Contextuele vraag → embedding (alpha=0.8).\n"
+            "- Beide mogelijk → 'embedding, short_title' of 'embedding, main_author' (alpha=0.4).\n"
+            "Filters (indeling, taal) alleen zetten als expliciet/ondubbelzinnig in de vraag. Raad niets."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
-                "user_query": { "type": "string", "description": "Zoekvraag in natuurlijke taal." }
+                "user_query": {"type": "string", "description": "Zoekvraag in natuurlijke taal."},
+                "mode": {
+                    "type": "string",
+                    "enum": ["faq", "collection"],
+                    "description": "Forceer collectie: 'faq' voor OBA Next/locatie-vragen of 'collection' voor boeken."
+                },
+                "query_by_choice": {
+                    "type": "string",
+                    "enum": [
+                        "short_title", "main_author",
+                        "embedding",
+                        "embedding, short_title",
+                        "embedding, main_author"
+                    ],
+                    "description": "Optioneel: expliciete keuze voor query_by."
+                },
+                "vector_alpha": {
+                    "type": "number",
+                    "description": "Optioneel: alpha voor embedding (0.4 bij mix, 0.8 bij puur embedding)."
+                },
+                "filters": {
+                    "type": "object",
+                    "properties": {
+                        "indeling": {
+                            "type": "array",
+                            "items": {"type": "string", "enum": IND_ALL},
+                            "description": "0..n indeling-opties; combineer met ||."
+                        },
+                        "language": {
+                            "type": "string",
+                            "description": "Taalhint (bv. Nederlands, Engels).",
+                            "enum": LANG_HINTS
+                        }
+                    },
+                    "additionalProperties": False
+                }
             },
             "required": ["user_query"],
             "additionalProperties": False
         },
-        "strict": True,
+        "strict": False,  # velden optioneel laten
     },
     {
         "type": "function",
@@ -118,11 +181,43 @@ TOOLS: List[Dict[str, Any]] = [
 
 # ---- Eenvoudige implementaties ----
 
-def _build_search_params(user_query: str) -> Dict[str, Any]:
+def _mk_filter_by(indeling_list: Optional[List[str]] = None, language: Optional[str] = None) -> str:
+    parts = []
+    if indeling_list:
+        # "(indeling:=optie1||indeling:=optie2)"
+        inner = "||".join([f"indeling:={opt}" for opt in indeling_list if opt])
+        if inner:
+            parts.append(f"({inner})")
+    filt = " && ".join([p for p in parts if p])
+    if language:
+        # voeg taal altijd als losse AND toe
+        # Let op: conform jouw eerdere prompt met spatie voor :=  (language :=Engels)
+        suffix = f"&& language :={language}"
+        filt = (filt + " " + suffix).strip() if filt else suffix.lstrip("& ").strip()
+    return filt
+
+def _looks_author(text: str) -> bool:
+    return bool(re.search(r"\b(auteur|schrijver|door|van)\b", text, re.I))
+
+def _looks_title(text: str) -> bool:
+    return bool(re.search(r"\btitel\b|\".+\"|\'[^\']+\'", text))
+
+def _build_search_params(
+    user_query: str,
+    mode: Optional[str] = None,
+    query_by_choice: Optional[str] = None,
+    vector_alpha: Optional[float] = None,
+    filters: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     text = (user_query or "").strip()
-    # OBA Next / Kraaiennest → FAQ
-    if re.search(r"\b(oba\s*next|kraaiennest|lab\s*kraaiennest)\b", text, re.I):
-        print("executed a tool for books")
+    filters = filters or {}
+    indeling_list = filters.get("indeling") if isinstance(filters.get("indeling"), list) else None
+    language = filters.get("language")
+
+    # 1) FAQ-detectie of geforceerde mode
+    faq_hint = bool(re.search(r"\b(oba\s*next|kraaiennest|lab\s*kraaiennest)\b", text, re.I))
+    if (mode == "faq") or (faq_hint and mode is None):
+        print("[BOOKS] tool: FAQ branch", flush=True)
         return {
             "q": text,
             "collection": COLLECTION_FAQ,
@@ -133,24 +228,40 @@ def _build_search_params(user_query: str) -> Dict[str, Any]:
             "STATUS": "KLAAR"
         }
 
-    # Heel simpel: titel of auteur hints
-    looks_author = bool(re.search(r"\b(auteur|schrijver|door|van)\b", text, re.I))
-    looks_title  = bool(re.search(r"\btitel\b|\".+\"|\'[^\']+\'", text))
+    # 2) Collection: heuristiek of expliciete keuze van model
+    looks_author = _looks_author(text)
+    looks_title  = _looks_title(text)
 
-    if looks_author and not looks_title:
-        query_by, vector = "main_author", ""
-    elif looks_title and not looks_author:
-        query_by, vector = "short_title", ""
+    if query_by_choice:
+        qb = query_by_choice
     else:
-        # contextueel/mix
-        query_by, vector = "embedding", "embedding:([], alpha: 0.8)"
-    print("executed a tool for books")
+        if looks_author and not looks_title:
+            qb = "main_author"
+        elif looks_title and not looks_author:
+            qb = "short_title"
+        else:
+            # contextueel of gemengd
+            qb = "embedding"
+
+    # vector_query op basis van keuze
+    if qb.startswith("embedding"):
+        # alpha: 0.8 bij puur embedding, 0.4 bij mixed
+        alpha = 0.4 if "," in qb else 0.8
+        if isinstance(vector_alpha, (int, float)):
+            alpha = float(vector_alpha)
+        vq = f"embedding:([], alpha: {alpha})"
+    else:
+        vq = ""
+
+    fb = _mk_filter_by(indeling_list=indeling_list, language=language)
+
+    print(f"[BOOKS] tool: collection qb={qb} vq={'yes' if vq else 'no'} filters={fb!r}", flush=True)
     return {
         "q": text,
         "collection": COLLECTION_BOOKS,
-        "query_by": query_by,
-        "vector_query": vector,
-        "filter_by": "",
+        "query_by": qb,
+        "vector_query": vq,
+        "filter_by": fb,
         "Message": "Zoekopdracht klaar. Wil je doelgroep of taal toevoegen?",
         "STATUS": "KLAAR"
     }
