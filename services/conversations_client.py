@@ -18,7 +18,37 @@ from services.oba_helpers import (
 client = OpenAI()
 MODEL  = "gpt-4.1-mini"
 FASTMODEL = "gpt-4.1-nano"
-SYSTEM = "Je bent Nexi. Antwoord kort (B1), in de taal van de gebruiker."
+SYSTEM = """
+Je bent Nexi, de hulpvaardige AI-zoekhulp van de OBA.
+
+Stijl
+- Antwoord kort (B1), maximaal ~20 woorden waar mogelijk.
+- Gebruik de taal van de gebruiker; schakel automatisch.
+- Geen meningen (beste/mooiste e.d.) → zeg dat je daar geen mening over hebt.
+- Domein = boeken/collectie en agenda. Ga niet buiten dit domein.
+
+Toolgebruik (belangrijk)
+- Kies precies één tool per beurt:
+  • build_search_params — collectie/FAQ zoekvragen over boeken of OBA Next.
+  • build_compare_params — bij vergelijkingswoorden (zoals, net als, lijkt op, als ...).
+  • build_agenda_query — bij vragen over activiteiten/evenementen.
+- Kun je puur uitleg geven zonder zoeken? Geef dan kort tekstueel antwoord zonder tool.
+- Als filters onduidelijk zijn, stel één concrete vervolgvraag (max 20 woorden) i.p.v. gokken.
+- Vul in tool-arguments alleen velden die je zeker weet; laat de rest weg.
+- Genereer zelf géén JSON; laat de tools de structuur leveren.
+
+Interpretatie-hints
+- “OBA Next” / “(Lab) Kraaiennest” → FAQ (build_search_params).
+- Taalhint in de vraag (bv. “in het Engels”) mag meegegeven worden aan boekzoekopdrachten.
+- Vergelijking: sluit originele titel/auteur uit in de tool-output.
+- Agenda: “Oosterdok” ⇒ “Centrale OBA”.
+
+Uitvoer
+- Zonder tool: geef een korte, vriendelijke reactie (emoji oké).
+- Met tool: hou tekst kort en laat de frontend de resultaten tonen.
+"""
+
+NO_RESULTS_MSG = "Sorry, ik heb niets gevonden. Misschien kun je je zoekopdracht anders formuleren."
 
 def create_conversation() -> str:
     print("Creating conversation...")
@@ -75,7 +105,8 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
                 envelope = make_envelope("faq", results=[], url=None, message=msg, thread_id=conversation_id)
 
             elif coll == COLLECTION_BOOKS:
-                book_results = typesense_search_books(result)  # best-effort; leeg bij ontbrekende env
+                book_results = typesense_search_books(result) # best-effort; leeg bij ontbrekende env
+                msg = NO_RESULTS_MSG if not book_results else result.get("Message")
                 envelope = make_envelope("collection", results=book_results, url=None, message=msg, thread_id=conversation_id)
 
             else:
@@ -83,14 +114,13 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
 
         # ... in ask_with_tools(), binnen de for-call lus:
         elif name == "build_agenda_query":
-            msg = result.get("Message")
             # 🔎 Debug: laat zien wat de tool oplevert
             print(f"[AGENDA] tool result keys={list(result.keys())}", flush=True)
             if "API" in result and "URL" in result:
                 print(f"[AGENDA] API URL -> {result['API']}", flush=True)
                 ag_results = fetch_agenda_results(result["API"])
                 print(f"[AGENDA] parsed items = {len(ag_results)}", flush=True)
-
+                msg = NO_RESULTS_MSG if not ag_results else result.get("Message")
                 envelope = make_envelope(
                     "agenda",
                     results=ag_results,
@@ -101,11 +131,11 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
 
             elif result.get("collection") == COLLECTION_EVENTS:
                 print("[AGENDA] no API/URL; using COLLECTION_EVENTS branch (embedding).", flush=True)
-                envelope = make_envelope("agenda", results=[], url=None, message=msg, thread_id=conversation_id)
+                envelope = make_envelope("agenda", results=[], url=None, message=NO_RESULTS_MSG, thread_id=conversation_id)
 
             else:
                 print("[AGENDA] unexpected branch; missing API/URL and no EVENTS collection.", flush=True)
-                envelope = make_envelope("agenda", results=[], url=None, message=msg, thread_id=conversation_id)
+                envelope = make_envelope("agenda", results=[], url=None, message=NO_RESULTS_MSG, thread_id=conversation_id)
 
         outputs.append({
             "type": "function_call_output",

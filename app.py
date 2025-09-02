@@ -82,14 +82,18 @@ def proxy_resolver():
     r = requests.get(url, timeout=15)
     return r.content, r.status_code, r.headers.items()
 
+# api.py
 @app.route('/proxy/details')
 def proxy_details():
     item_id = request.args.get('item_id')
+    if not item_id:
+        return "Missing item_id", 400
+
     url = f'https://zoeken.oba.nl/api/v1/details/?id=|oba-catalogus|{item_id}&authorization={OBA_API_KEY}&output=json'
+    print("url of book detail"+url)
     r = requests.get(url, timeout=15)
-    if r.headers.get('Content-Type', '').startswith('application/json'):
-        return jsonify(r.json()), r.status_code, r.headers.items()
-    return r.text, r.status_code, r.headers.items()
+    return r.content, r.status_code, r.headers.items()
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)

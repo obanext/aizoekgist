@@ -58,11 +58,29 @@ AGENDA_TYPES = [
 TOOLS: List[Dict[str, Any]] = [
     {
         "type": "function",
+        "name": "build_faq_params",
+        "description": (
+            "Zet een FAQ- of OBA Next-vraag om naar Typesense-FAQ parameters. "
+            "Gebruik embedding (alpha=0.8), geen filters."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "user_query": {
+                    "type": "string",
+                    "description": "FAQ-vraag in natuurlijke taal (OBA Next, locaties, lidmaatschap, tarieven, etc.)."
+                }
+            },
+            "required": ["user_query"],
+            "additionalProperties": False
+        },
+        "strict": True,
+    },
+    {
+        "type": "function",
         "name": "build_search_params",
         "description": (
-            "Zet [ZOEKVRAAG] om naar Typesense-zoekparameters. "
-            "Kies collectie & query_by volgens de regels:\n"
-            "- OBA Next / (Lab) Kraaiennest → collection=obafaq, query_by=embedding, alpha=0.8.\n"
+            "Zet [ZOEKVRAAG] voor boeken om naar Typesense-zoekparameters.\n"
             "- Directe titel of auteur → 1 keuze voor query_by (short_title of main_author), géén vector.\n"
             "- Contextuele vraag → embedding (alpha=0.8).\n"
             "- Beide mogelijk → 'embedding, short_title' of 'embedding, main_author' (alpha=0.4).\n"
@@ -72,11 +90,6 @@ TOOLS: List[Dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "user_query": {"type": "string", "description": "Zoekvraag in natuurlijke taal."},
-                "mode": {
-                    "type": "string",
-                    "enum": ["faq", "collection"],
-                    "description": "Forceer collectie: 'faq' voor OBA Next/locatie-vragen of 'collection' voor boeken."
-                },
                 "query_by_choice": {
                     "type": "string",
                     "enum": [
@@ -111,7 +124,7 @@ TOOLS: List[Dict[str, Any]] = [
             "required": ["user_query"],
             "additionalProperties": False
         },
-        "strict": False,  # velden optioneel laten
+        "strict": False,
     },
     {
         "type": "function",
@@ -204,7 +217,6 @@ def _looks_title(text: str) -> bool:
 
 def _build_search_params(
     user_query: str,
-    mode: Optional[str] = None,
     query_by_choice: Optional[str] = None,
     vector_alpha: Optional[float] = None,
     filters: Optional[Dict[str, Any]] = None
@@ -214,21 +226,7 @@ def _build_search_params(
     indeling_list = filters.get("indeling") if isinstance(filters.get("indeling"), list) else None
     language = filters.get("language")
 
-    # 1) FAQ-detectie of geforceerde mode
-    faq_hint = bool(re.search(r"\b(oba\s*next|kraaiennest|lab\s*kraaiennest)\b", text, re.I))
-    if (mode == "faq") or (faq_hint and mode is None):
-        print("[BOOKS] tool: FAQ branch", flush=True)
-        return {
-            "q": text,
-            "collection": COLLECTION_FAQ,
-            "query_by": "embedding",
-            "vector_query": "embedding:([], alpha: 0.8)",
-            "filter_by": "",
-            "Message": "Ik zoek in OBA Next veelgestelde vragen. Wil je verfijnen?",
-            "STATUS": "KLAAR"
-        }
-
-    # 2) Collection: heuristiek of expliciete keuze van model
+    # Alleen boekenlogica (FAQ is nu aparte tool build_faq_params)
     looks_author = _looks_author(text)
     looks_title  = _looks_title(text)
 
@@ -240,12 +238,9 @@ def _build_search_params(
         elif looks_title and not looks_author:
             qb = "short_title"
         else:
-            # contextueel of gemengd
             qb = "embedding"
 
-    # vector_query op basis van keuze
     if qb.startswith("embedding"):
-        # alpha: 0.8 bij puur embedding, 0.4 bij mixed
         alpha = 0.4 if "," in qb else 0.8
         if isinstance(vector_alpha, (int, float)):
             alpha = float(vector_alpha)
@@ -262,7 +257,7 @@ def _build_search_params(
         "query_by": qb,
         "vector_query": vq,
         "filter_by": fb,
-        "Message": "Zoekopdracht klaar. Wil je doelgroep of taal toevoegen?",
+        "Message": "Ik heb voor je gezocht en dit voor je gevonden",
         "STATUS": "KLAAR"
     }
 
@@ -293,7 +288,7 @@ def _build_compare_params(comparison_query: str) -> Dict[str, Any]:
         "query_by": query_by,
         "vector_query": vector,
         "filter_by": excl.lstrip("&"),
-        "Message": "Ik zocht iets dat erop lijkt. Wil je doelgroep/taal erbij?",
+        "Message": "Ik zocht iets dat erop lijkt, is dit wat je zocht?",
         "STATUS": "KLAAR"
     }
 
@@ -364,8 +359,23 @@ def _build_agenda_query(
         "STATUS": "KLAAR"
     }
 
+def _build_faq_params(user_query: str) -> Dict[str, Any]:
+    text = (user_query or "").strip()
+    print("[FAQ] tool executed", flush=True)
+    return {
+        "q": text,
+        "collection": COLLECTION_FAQ,
+        "query_by": "embedding",
+        "vector_query": "embedding:([], alpha: 0.8)",
+        "filter_by": "",
+        "Message": "Ik zoek in OBA Next veelgestelde vragen. Wil je verfijnen?",
+        "STATUS": "KLAAR",
+    }
+
+
 # ---- Dispatcher tabel ----
 TOOL_IMPLS = {
+    "build_faq_params":     _build_faq_params,
     "build_search_params":  _build_search_params,
     "build_compare_params": _build_compare_params,
     "build_agenda_query":   _build_agenda_query,
