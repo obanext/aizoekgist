@@ -1,7 +1,6 @@
 # services/oba_tools.py
 import os
 import re
-import json
 import urllib.parse as ul
 from typing import Any, Dict, List, Optional
 
@@ -126,19 +125,59 @@ TOOLS: List[Dict[str, Any]] = [
         },
         "strict": False,
     },
+    # vervang het huidige build_compare_params item in TOOLS door dit:
+
     {
         "type": "function",
         "name": "build_compare_params",
-        "description": "Zet [VERGELIJKINGSVRAAG] om naar Typesense-zoekparameters met uitsluiting van originele titel/auteur.",
+        "description": (
+            "Zet [VERGELIJKINGSVRAAG] om naar Typesense-zoekparameters. "
+            "Bedenk een query die geschikt is om te zoeken naar vergelijkbare boeken maar waar niet iets in genoemd wordt wat verwijst naar het origineel"
+            "De LLM MOET aangeven wat de 'original' (titel of auteur) is die moet worden uitgesloten,"
+            "en de 'mode' kiezen: 'author' | 'title' | 'other'. "
+            "Gebruik filters alleen als die expliciet uit de vraag blijken."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
-                "comparison_query": { "type": "string", "description": "Vergelijkingsvraag in natuurlijke taal." }
+                "comparison_query": {
+                    "type": "string",
+                    "description": "Vergelijkingsvraag in natuurlijke taal; beschrijf het gewenste 'gevoel/stijl/onderwerpen'."
+                },
+                "original": {
+                    "type": "string",
+                    "description": "De originele titel of auteur die UITGESLOTEN moet worden uit de resultaten."
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": ["author", "title", "other"],
+                    "description": "Vergelijk je op auteur, titel of overig?"
+                },
+                "vector_alpha": {
+                    "type": "number",
+                    "description": "Optioneel: alpha voor embedding (0.4 bij auteur+embedding, 0.8 anders)."
+                },
+                "filters": {
+                    "type": "object",
+                    "properties": {
+                        "indeling": {
+                            "type": "array",
+                            "items": {"type": "string", "enum": IND_ALL},
+                            "description": "0..n indeling-opties; combineer met ||."
+                        },
+                        "language": {
+                            "type": "string",
+                            "enum": LANG_HINTS,
+                            "description": "Taalhint (bv. Nederlands, Engels)."
+                        }
+                    },
+                    "additionalProperties": False
+                }
             },
             "required": ["comparison_query"],
             "additionalProperties": False
         },
-        "strict": True,
+        "strict": False,
     },
     {
         "type": "function",
@@ -261,35 +300,61 @@ def _build_search_params(
         "STATUS": "KLAAR"
     }
 
-def _build_compare_params(comparison_query: str) -> Dict[str, Any]:
-    text = (comparison_query or "").strip()
-    m = re.search(r"(zoals|net als|lijkt op|als)\s+([^\.,;]+)", text, re.I)
-    original = (m.group(2).strip(" '\"") if m else "")
+def _build_compare_params(
+    comparison_query: str,
+    original: Optional[str] = None,
+    mode: Optional[str] = None,
+    vector_alpha: Optional[float] = None,
+    filters: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    LLM-gedreven: wij doen geen tekstparse/heuristiek.
+    - 'comparison_query' = inhoudelijke beschrijving waarop gezocht wordt
+    - 'original'         = titel of auteur die moet worden uitgesloten
+    - 'mode'             = 'author' | 'title' | 'other'
+    """
+    q_text = (comparison_query or "").strip()
+    orig   = (original or "").strip()
+    mode   = (mode or "other").strip().lower()
 
-    # standaard: vergelijk op embedding + sluit titel uit
-    query_by  = "embedding"
-    vector    = "embedding:([], alpha: 0.8)"
-    excl      = f"&&short_title:! {original}" if original else ""
+    # Filters (door LLM ingevuld, wij formatteren alleen)
+    filters = filters or {}
+    indeling_list = filters.get("indeling") if isinstance(filters.get("indeling"), list) else None
+    language = filters.get("language")
+    fb_base = _mk_filter_by(indeling_list=indeling_list, language=language)
 
-    # als 'auteur' genoemd wordt, dan main_author + uitsluiten auteur
-    if re.search(r"\b(auteur|schrijver)\b", text, re.I):
+    # Keuze voor query_by + alpha op basis van mode
+    if mode == "author":
         query_by = "main_author, embedding"
-        vector   = "embedding:([], alpha: 0.4)"
-        excl     = f"&&main_author:! {original}" if original else ""
+        default_alpha = 0.4
+        excl_field = "main_author"
+    else:
+        # 'title' en 'other' behandelen we hetzelfde qua ranking
+        query_by = "embedding"
+        default_alpha = 0.8
+        excl_field = "short_title"
 
-    # verwijder het vergelijkingswoord uit q
-    q_clean = re.sub(r"(zoals|net als|lijkt op|als)\s+", "", text, flags=re.I)
+    alpha = float(vector_alpha) if isinstance(vector_alpha, (int, float)) else default_alpha
+    vector = f"embedding:([], alpha: {alpha})"
 
-    print("executed a compare tool for books")
+    # Filterstring opbouwen (optionele uitsluiting)
+    parts = []
+    if fb_base:
+        parts.append(fb_base)
+    if orig:
+        parts.append(f"{excl_field}:! {orig}")
+    filter_by = " && ".join(parts)
+
+    print("[COMPARE] tool (LLM-driven) mode=%s exclude=%s filters=%r" % (mode, orig, filter_by), flush=True)
 
     return {
-        "q": q_clean,
+        "q": q_text,
         "collection": COLLECTION_BOOKS,
         "query_by": query_by,
         "vector_query": vector,
-        "filter_by": excl.lstrip("&"),
-        "Message": "Ik zocht iets dat erop lijkt, is dit wat je zocht?",
-        "STATUS": "KLAAR"
+        "filter_by": filter_by,
+        "Message": "Ik zocht iets vergelijkbaars. Wil je doelgroep/taal toevoegen?",
+        "STATUS": "KLAAR",
     }
 
 def _enc_path(path: str) -> str:
