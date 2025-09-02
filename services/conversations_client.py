@@ -13,6 +13,7 @@ from services.oba_helpers import (
     make_envelope,
     typesense_search_books,
     fetch_agenda_results,
+    typesense_search_faq,
 )
 
 client = OpenAI()
@@ -29,6 +30,7 @@ Stijl
 
 Toolgebruik (belangrijk)
 - Kies precies één tool per beurt:
+  • build_faq_params voor vragen over OBA Next, locaties, lidmaatschap, tarieven, openingstijden, regels, accounts, reserveren/verlengen, etc.
   • build_search_params — collectie/FAQ zoekvragen over boeken of OBA Next.
   • build_compare_params — bij vergelijkingswoorden (zoals, net als, lijkt op, als ...).
   • build_agenda_query — bij vragen over activiteiten/evenementen.
@@ -97,14 +99,19 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
         result = impl(**args) if impl else {"error": f"Unknown tool: {name}"}
 
         # Bouw envelope op basis van toolresultaat
+        if name == "build_faq_params":
+            faq_results = typesense_search_faq(result)
+            if not faq_results:
+                envelope = make_envelope("faq", results=[], url=None, message=NO_RESULTS_MSG, thread_id=conversation_id)
+            else:
+                # message bewust leeg laten → tweede LLM-call formuleert het antwoord
+                envelope = make_envelope("faq", results=faq_results, url=None, message=None, thread_id=conversation_id)
+
         if name in ("build_search_params", "build_compare_params"):
             msg = result.get("Message")
             coll = result.get("collection")
 
-            if coll == COLLECTION_FAQ:
-                envelope = make_envelope("faq", results=[], url=None, message=msg, thread_id=conversation_id)
-
-            elif coll == COLLECTION_BOOKS:
+            if coll == COLLECTION_BOOKS:
                 book_results = typesense_search_books(result) # best-effort; leeg bij ontbrekende env
                 msg = NO_RESULTS_MSG if not book_results else result.get("Message")
                 envelope = make_envelope("collection", results=book_results, url=None, message=msg, thread_id=conversation_id)
@@ -143,15 +150,31 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
             "output": json.dumps(result, ensure_ascii=False),
         })
 
+    resp_type = (envelope.get("response") or {}).get("type")
+
+    if resp_type == "faq":
+        # pak alleen de top 1-2 resultaten om de prompt compact te houden
+        faq_results_for_prompt = (envelope["response"].get("results") or [])[:2]
+        instruction = (
+            "Formuleer in de taal van de gebruiker een kort en helder antwoord (B1, max 150 woorden)"
+            "op basis van de onderstaande FAQ-resultaten. Gebruik alleen de gegeven info, parafraseer. "
+            f"Vraag: {user_text}\n"
+            f"FAQ-resultaten (JSON): {json.dumps(faq_results_for_prompt, ensure_ascii=False)}"
+        )
+    else:
+        instruction = "Zeg iets als: Ik heb voor je gezocht en deze resultaten gevonden."
+
+    print("instrcution"+instruction)
     # 4) Commit tool-output in dezelfde conversation, mét korte ack-tekst
     ack_resp = client.responses.create(
         model=FASTMODEL,
-        instructions="Zeg iets als: Ik heb voor je gezocht en deze resultaten gevonden.",
+        instructions=instruction,
         conversation=conversation_id,
         tools=[],            # geen nieuwe tools aanbieden
         input=outputs,       # alleen function_call_output items
         tool_choice="none",  # model mag niets meer starten
     )
+
     ack_text = (ack_resp.output_text or "").strip() if hasattr(ack_resp, "output_text") else ""
 
     # Als de envelope nog geen message had, vul 'm met de ack
@@ -159,4 +182,5 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
         envelope["response"]["message"] = ack_text or envelope["response"].get("message")
 
     # 5) Geef envelope terug (of nette fallback)
+    print("message"+envelope.get("response").get("message"), flush=True)
     return envelope or make_envelope("text", results=[], url=None, message=(ack_text or "Klaar."), thread_id=conversation_id)
