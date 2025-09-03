@@ -21,6 +21,7 @@ MODEL  = "gpt-4.1-mini"
 FASTMODEL = "gpt-4.1-nano"
 SYSTEM = """
 Je bent Nexi, de hulpvaardige AI-zoekhulp van de OBA.
+Beantwoord alleen vragen met betrekking op de bibliotheek.
 
 Stijl
 - Antwoord kort (B1), maximaal ~20 woorden waar mogelijk.
