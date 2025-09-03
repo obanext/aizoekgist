@@ -287,12 +287,7 @@ async function sendMessage() {
                 break;
             }
             case 'faq': {
-                const faqResults = resp.results || [];
-                if (faqResults.length > 0) {
-                    displayAssistantMessage(faqResults[0].antwoord);
-                } else {
-                    displayAssistantMessage("Ik heb daar geen antwoord op kunnen vinden.");
-                }
+                if (resp.message) displayAssistantMessage(resp.message);
                 document.getElementById("filter-options").innerHTML = "";
                 previousResults = [];
                 break;
@@ -529,7 +524,7 @@ async function fetchAndShowDetailPage(ppn) {
 
             const detailContainer = document.getElementById('detail-container');
             const searchResultsContainer = document.getElementById('search-results');
-            
+
             searchResultsContainer.style.display = 'none';
             detailContainer.style.display = 'block';
 
@@ -550,7 +545,7 @@ async function fetchAndShowDetailPage(ppn) {
             const currentUrl = window.location.href.split('?')[0];
             const breadcrumbs = document.getElementById('breadcrumbs');
             breadcrumbs.innerHTML = `<a href="#" onclick="goBackToResults()">resultaten</a> > <span class="breadcrumb-title"><a href="${currentUrl}?ppn=${ppn}" target="_blank">${title}</a></span>`;
-            
+
             if (!linkedPPNs.has(ppn)) {
                 sendDetailPageLinkToUser(title, currentUrl, ppn);
             }
