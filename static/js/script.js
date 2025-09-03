@@ -156,19 +156,37 @@ function decideAndLoadFilter(results) {
 
 /* ===== Functionaliteit chat en zoekresultaten ===== */
 function checkInput() {
-    const userInput = document.getElementById('user-input').value.trim();
-    const sendButton = document.getElementById('send-button');
-    const applyFiltersButton = document.getElementById('apply-filters-button');
-    const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
-    let anyChecked = Array.from(checkboxes).some(checkbox => checkbox.checked);
+  const userInput = document.getElementById('user-input').value.trim();
+  const sendButton = document.getElementById('send-button');
+  const applyFiltersButton = document.getElementById('apply-filters-button');
 
+  if (sendButton) {
     sendButton.disabled = userInput === "";
     sendButton.style.backgroundColor = userInput === "" ? "#ccc" : "#6d5ab0";
     sendButton.style.cursor = userInput === "" ? "not-allowed" : "pointer";
+  }
 
-    applyFiltersButton.disabled = !anyChecked;
-    applyFiltersButton.style.backgroundColor = anyChecked ? "#6d5ab0" : "#ccc";
-    applyFiltersButton.style.cursor = anyChecked ? "pointer" : "not-allowed";
+  if (!applyFiltersButton) return; // veiligheidsnet
+
+  let anySelected = false;
+
+  // ✅ Agenda: enable als één van de selects een waarde heeft
+  const agendaLocation = document.getElementById("agenda-location");
+  if (agendaLocation) {
+    const loc  = (agendaLocation.value || "").trim();
+    const age  = (document.getElementById("agenda-age")?.value || "").trim();
+    const date = (document.getElementById("agenda-date")?.value || "").trim();
+    const type = (document.getElementById("agenda-type")?.value || "").trim();
+    anySelected = !!(loc || age || date || type);
+  } else {
+    // Collectie: enable als er minstens één checkbox aan staat
+    const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
+    anySelected = Array.from(checkboxes).some(cb => cb.checked);
+  }
+
+  applyFiltersButton.disabled = !anySelected;
+  applyFiltersButton.style.backgroundColor = anySelected ? "#6d5ab0" : "#ccc";
+  applyFiltersButton.style.cursor = anySelected ? "pointer" : "not-allowed";
 }
 
 function updateActionButtons() {
