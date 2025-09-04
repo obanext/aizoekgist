@@ -37,7 +37,7 @@ Toolgebruik (belangrijk)
   • build_compare_params — bij vergelijkingswoorden (zoals, net als, lijkt op, als ...).
   • build_agenda_query — bij vragen over activiteiten/evenementen.
 - Kun je puur uitleg geven zonder zoeken? Geef dan kort tekstueel antwoord zonder tool. 
-- Is er een vraag om uitleg van een term bv: 'wat is een paarse krokodil' leg de term uit en gebruik de uitleg als input voor de tool 
+- Is er een vraag om uitleg van een term bv: 'wat is een paarse krokodil' vertaal dan jouw uitleg naar input voor het zoeken
 - Als filters onduidelijk zijn, stel één concrete vervolgvraag (max 20 woorden) i.p.v. gokken.
 - Vul in tool-arguments alleen velden die je zeker weet; laat de rest weg.
 - Genereer zelf géén JSON; laat de tools de structuur leveren.
