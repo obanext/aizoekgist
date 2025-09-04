@@ -180,8 +180,10 @@ function checkInput() {
     anySelected = !!(loc || age || date || type);
   } else {
     // Collectie: enable als er minstens één checkbox aan staat
-    const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
-    anySelected = Array.from(checkboxes).some(cb => cb.checked);
+    const fic  = (document.getElementById("books-indeling-fiction")?.value || "").trim();
+    const nonf = (document.getElementById("books-indeling-nonfiction")?.value || "").trim();
+    const lang = (document.getElementById("books-language")?.value || "").trim();
+    anySelected = !!(fic || nonf || lang);
   }
 
   applyFiltersButton.disabled = !anySelected;
@@ -416,7 +418,7 @@ function displayAgendaResults(results) {
     searchResultsContainer.classList.remove('book-grid');
     searchResultsContainer.classList.add('agenda-list');
 
-    const maxItems = 5;
+    const maxItems = 20;
     const limitedResults = results.slice(0, maxItems);
 
     limitedResults.forEach(result => {
@@ -608,11 +610,14 @@ async function applyFiltersAndSend() {
         if (type) selected.push(`Type: ${type}`);
         filterString = selected.join("||");
     } else {
-        const checkboxes = document.querySelectorAll('#filters input[type="checkbox"]');
+        const fic  = (document.getElementById("books-indeling-fiction")?.value || "").trim();
+        const nonf = (document.getElementById("books-indeling-nonfiction")?.value || "").trim();
+        const lang = (document.getElementById("books-language")?.value || "").trim();
+
         const selected = [];
-        checkboxes.forEach(checkbox => {
-            if (checkbox.checked) selected.push(checkbox.value);
-        });
+        if (fic)  selected.push(`Indeling: ${fic}`);
+        if (nonf) selected.push(`Indeling: ${nonf}`);
+        if (lang) selected.push(`Taal: ${lang}`);
         filterString = selected.join("||");
     }
 

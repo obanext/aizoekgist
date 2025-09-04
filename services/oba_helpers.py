@@ -47,6 +47,7 @@ def make_envelope(
 # --- Typesense ---
 def typesense_search_books(params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Best-effort Typesense search (books)."""
+    print("Doing a Typesense search...")
     if not TYPESENSE_API_URL or not TYPESENSE_API_KEY:
         return []
 
@@ -61,6 +62,9 @@ def typesense_search_books(params: Dict[str, Any]) -> List[Dict[str, Any]]:
         "filter_by": params.get("filter_by"),
     }]}
 
+    print(f"[TS] POST {TYPESENSE_API_URL}")
+    print(f"[TS] Request body: {body}", flush=True)
+
     try:
         r = requests.post(
             TYPESENSE_API_URL,
@@ -69,8 +73,12 @@ def typesense_search_books(params: Dict[str, Any]) -> List[Dict[str, Any]]:
             timeout=15,
         )
         if r.status_code != 200:
+            print(f"[TS] Error body: {r.text[:500]}", flush=True)
             return []
         hits = r.json().get("results", [{}])[0].get("hits", [])
+        print(f"[TS] Collection={body['searches'][0]['collection']} hits={len(hits)}", flush=True)
+        if hits:
+            print(f"[TS] First doc keys: {list(hits[0].get('document', {}).keys())}", flush=True)
         out = []
         for h in hits:
             doc = h.get("document") or {}

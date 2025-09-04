@@ -1,33 +1,37 @@
 <div id="filter-options">
-  <!-- Fictie -->
-  <fieldset>
-    <legend>Fictie</legend>
-    <label><input type="checkbox" value="prentenboeken baby"> prentenboeken baby</label>
-    <label><input type="checkbox" value="prentenboeken tot 4 jaar"> prentenboeken tot 4 jaar</label>
-    <label><input type="checkbox" value="prentenboeken vanaf 4 jaar"> prentenboeken vanaf 4 jaar</label>
-    <label><input type="checkbox" value="fictie tot 9 jaar"> fictie tot 9 jaar</label>
-    <label><input type="checkbox" value="fictie 9 tot 12 jaar"> fictie 9 tot 12 jaar</label>
-    <label><input type="checkbox" value="fictie vanaf 12 jaar"> fictie vanaf 12 jaar</label>
-    <label><input type="checkbox" value="fictie vanaf 15 jaar"> fictie vanaf 15 jaar</label>
-    <label><input type="checkbox" value="fictie volwassenen"> fictie volwassenen</label>
-  </fieldset>
-
-  <!-- Non-fictie -->
-  <fieldset>
-    <legend>Non-fictie</legend>
-    <label><input type="checkbox" value="info tot 9 jaar"> info tot 9 jaar</label>
-    <label><input type="checkbox" value="info vanaf 9 jaar"> info vanaf 9 jaar</label>
-    <label><input type="checkbox" value="info volwassenen"> info volwassenen</label>
-  </fieldset>
-
-  <!-- Taal -->
-  <fieldset>
-    <legend>Taal</legend>
-    <label><input type="checkbox" value="taal: Nederlands"> Nederlands</label>
-    <label><input type="checkbox" value="taal: Engels"> Engels</label>
-    <label><input type="checkbox" value="taal: Duits"> Duits</label>
-    <label><input type="checkbox" value="taal: Frans"> Frans</label>
-    <label><input type="checkbox" value="taal: Spaans"> Spaans</label>
-    <!-- voeg hier meer talen toe indien nodig -->
-  </fieldset>
+  <div class="filters-wrap">
+    <!-- Fictie -->
+    <label class="filter-label" for="books-indeling-fiction">Fictie</label>
+    <select id="books-indeling-fiction">
+      <option value="">– Kies fictie –</option>
+      <option value="prentenboeken baby">Prentenboeken baby</option>
+      <option value="prentenboeken tot 4 jaar">Prentenboeken tot 4 jaar</option>
+      <option value="prentenboeken vanaf 4 jaar">Prentenboeken vanaf 4 jaar</option>
+      <option value="fictie tot 9 jaar">Fictie tot 9 jaar</option>
+      <option value="fictie 9 tot 12 jaar">Fictie 9 tot 12 jaar</option>
+      <option value="fictie vanaf 12 jaar">Fictie vanaf 12 jaar</option>
+      <option value="fictie vanaf 15 jaar">Fictie vanaf 15 jaar</option>
+      <option value="fictie Volwassenen">Fictie volwassenen</option>
+    </select>
+    <!-- Non-fictie -->
+    <label class="filter-label" for="books-indeling-nonfiction">Non-fictie</label>
+    <select id="books-indeling-nonfiction">
+      <option value="">– Kies non-fictie –</option>
+      <option value="info tot 9 jaar">Info tot 9 jaar</option>
+      <option value="info vanaf 9 jaar">Info vanaf 9 jaar</option>
+      <option value="info volwassenen">Info volwassenen</option>
+    </select>
+    <!-- Taal -->
+    <label class="filter-label" for="books-language">Taal</label>
+    <select id="books-language">
+      <option value="">– Kies taal –</option>
+      <option value="Nederlands">Nederlands</option>
+      <option value="Engels">Engels</option>
+      <option value="Duits">Duits</option>
+      <option value="Frans">Frans</option>
+      <option value="Spaans">Spaans</option>
+      <option value="Turks">Turks</option>
+      <option value="Arabisch">Arabisch</option>
+    </select>
+  </div>
 </div>

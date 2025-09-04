@@ -5,6 +5,7 @@ import urllib.parse as ul
 from typing import Any, Dict, List, Optional
 
 # (optioneel) env overrides; anders veilige defaults
+COLLECTION_BOOKS_KN = os.getenv("COLLECTION_BOOKS_KN", "obadbkraaiennest")
 COLLECTION_BOOKS  = os.getenv("COLLECTION_BOOKS",  "obadb30725")
 COLLECTION_FAQ    = os.getenv("COLLECTION_FAQ",    "obafaq")
 COLLECTION_EVENTS = os.getenv("COLLECTION_EVENTS", "obadbevents")
@@ -103,6 +104,10 @@ TOOLS: List[Dict[str, Any]] = [
                     "type": "number",
                     "description": "Optioneel: alpha voor embedding (0.4 bij mix, 0.8 bij puur embedding)."
                 },
+                "location_kraaiennest": {
+                    "type": "boolean",
+                    "description": "Zet op true als de gebruiker expliciet Kraaiennest vraagt."
+                },
                 "filters": {
                     "type": "object",
                     "properties": {
@@ -149,6 +154,10 @@ TOOLS: List[Dict[str, Any]] = [
                 },
                 "vector_alpha": {"type": "number",
                                  "description": "Optioneel: alpha voor embedding (0.4 bij author-mix, 0.8 standaard)."},
+                "location_kraaiennest": {
+                    "type": "boolean",
+                    "description": "Zet op true als de gebruiker expliciet Kraaiennest vraagt."
+                },
                 "filters": {
                     "type": "object",
                     "properties": {
@@ -250,13 +259,14 @@ def _build_search_params(
     user_query: str,
     query_by_choice: Optional[str] = None,
     vector_alpha: Optional[float] = None,
+    location_kraaiennest: Optional[bool] = False,
     filters: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     text = (user_query or "").strip()
     filters = filters or {}
     indeling_list = filters.get("indeling") if isinstance(filters.get("indeling"), list) else None
     language = filters.get("language")
-
+    print(f"kraaiennest?{location_kraaiennest}")
     # Alleen boekenlogica (FAQ is nu aparte tool build_faq_params)
     looks_author = _looks_author(text)
     looks_title  = _looks_title(text)
@@ -279,12 +289,14 @@ def _build_search_params(
     else:
         vq = ""
 
+    books = COLLECTION_BOOKS_KN if location_kraaiennest else COLLECTION_BOOKS
+
     fb = _mk_filter_by(indeling_list=indeling_list, language=language)
 
     print(f"[BOOKS] tool: collection qb={qb} vq={'yes' if vq else 'no'} filters={fb!r}", flush=True)
     return {
         "q": text,
-        "collection": COLLECTION_BOOKS,
+        "collection": books,
         "query_by": qb,
         "vector_query": vq,
         "filter_by": fb,
@@ -302,6 +314,7 @@ def _build_compare_params(
     original: Optional[str] = None,
     mode: Optional[str] = None,
     vector_alpha: Optional[float] = None,
+    location_kraaiennest: Optional[bool] = False,
     filters: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
@@ -319,6 +332,8 @@ def _build_compare_params(
     indeling_list = filters.get("indeling") if isinstance(filters.get("indeling"), list) else None
     language = filters.get("language")
     fb_base = _mk_filter_by(indeling_list=indeling_list, language=language)
+
+    books = COLLECTION_BOOKS_KN if location_kraaiennest else COLLECTION_BOOKS
 
     # 2) Ranking & veldkeuze
     if mode == "author":
@@ -348,7 +363,7 @@ def _build_compare_params(
 
     return {
         "q": q_text,
-        "collection": COLLECTION_BOOKS,
+        "collection": books,
         "query_by": query_by,
         "vector_query": vector,
         "filter_by": filter_by,

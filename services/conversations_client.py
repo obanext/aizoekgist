@@ -1,13 +1,13 @@
 # services/conversations_tools_conv.py
 import json
-from typing import Any, List, Dict, Optional, Union
+from typing import Any, List, Dict, Optional, Union, cast
 from openai import OpenAI
 from services.oba_tools import (
     TOOLS,
     TOOL_IMPLS,
     COLLECTION_BOOKS,
     COLLECTION_FAQ,
-    COLLECTION_EVENTS,
+    COLLECTION_EVENTS, COLLECTION_BOOKS_KN,
 )
 from services.oba_helpers import (
     make_envelope,
@@ -114,8 +114,16 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
             msg = result.get("Message")
             coll = result.get("collection")
 
-            if coll == COLLECTION_BOOKS:
+            if coll == COLLECTION_BOOKS or COLLECTION_BOOKS_KN:
                 book_results = typesense_search_books(result) # best-effort; leeg bij ontbrekende env
+                print(str(book_results))
+                result = cast(Dict[str, Any], result)
+                result["_ts_context"] = {
+                    "kind": "books",
+                    "user_query": user_text,
+                    "books": [{"ppn": b.get("ppn"), "short_title": b.get("short_title"),"description" : b.get("beschrijving")} for b in
+                              (book_results or [])[:8]]
+                }
                 msg = NO_RESULTS_MSG if not book_results else result.get("Message")
                 envelope = make_envelope("collection", results=book_results, url=None, message=msg, thread_id=conversation_id)
 
@@ -138,6 +146,22 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
                     message=msg,
                     thread_id=conversation_id
                 )
+                result = cast(Dict[str, Any], result)
+                agenda_items = [
+                    {
+                        "title": it.get("title"),
+                        "summary": it.get("summary"),
+                        "date": it.get("date") or (it.get("raw_date") or {}).get("start"),
+                        "time": it.get("time"),
+                        "location": it.get("location"),
+                    }
+                    for it in (ag_results or [])[:20]
+                ]
+                result["_ts_context"] = {
+                    "kind": "agenda",
+                    "user_query": user_text,  # de originele vraag van de gebruiker
+                    "items": agenda_items,  # top N items
+                }
 
             elif result.get("collection") == COLLECTION_EVENTS:
                 print("[AGENDA] no API/URL; using COLLECTION_EVENTS branch (embedding).", flush=True)
@@ -167,7 +191,6 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
     else:
         instruction = "Zeg iets als: Ik heb voor je gezocht en deze resultaten gevonden."
 
-    print("instrcution"+instruction)
     # 4) Commit tool-output in dezelfde conversation, mét korte ack-tekst
     ack_resp = client.responses.create(
         model=FASTMODEL,
