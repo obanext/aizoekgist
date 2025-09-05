@@ -406,6 +406,10 @@ function displaySearchResults(results) {
             </div>
         `;
         searchResultsContainer.appendChild(resultElement);
+        const imgEl = resultElement.querySelector('img');
+        loadCoverOrPlaceholder(imgEl.src, '/static/images/placeholder.png', (src) => {
+        imgEl.src = src;
+        });
     });
 
     updateResultsBadge(results.length);
@@ -537,10 +541,16 @@ async function fetchAndShowDetailPage(ppn) {
         const contentType = detailResponse.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) {
             const detailJson = await detailResponse.json();
+            const rec = detailJson?.record ?? {};
 
-            const title = detailJson.record.titles[0] || 'Titel niet beschikbaar';
-            const summary = detailJson.record.summaries[0] || 'Samenvatting niet beschikbaar';
-            const coverImage = detailJson.record.coverimages[0] || '';
+            const titles = Array.isArray(rec.titles) ? rec.titles : (rec.titles ? [rec.titles] : []);
+            const covers = Array.isArray(rec.coverimages) ? rec.coverimages : (rec.coverimages ? [rec.coverimages] : []);
+            const summaries = Array.isArray(rec.summaries) ? rec.summaries : [];
+            const descriptions = Array.isArray(rec.description) ? rec.description : (rec.description ? [rec.description] : []);
+
+            const title = titles[0] || 'Titel niet beschikbaar';
+            const summary = summaries[0] || descriptions[0] || 'Samenvatting niet beschikbaar';
+            const coverImage = covers[0] || '';
 
             const detailContainer = document.getElementById('detail-container');
             const searchResultsContainer = document.getElementById('search-results');
@@ -561,6 +571,10 @@ async function fetchAndShowDetailPage(ppn) {
                     </div>
                 </div>
             `;
+            const imgEl = detailContainer.querySelector('.detail-cover');
+            loadCoverOrPlaceholder(imgEl.src, '/static/images/placeholder.png', (src) => {
+            imgEl.src = src;
+            });
 
             const currentUrl = window.location.href.split('?')[0];
             const breadcrumbs = document.getElementById('breadcrumbs');
@@ -576,6 +590,23 @@ async function fetchAndShowDetailPage(ppn) {
         displayAssistantMessage('Er is iets misgegaan bij het ophalen van de detailpagina.');
     }
 }
+
+function loadCoverOrPlaceholder(url, placeholderUrl, cb) {
+  const img = new Image();
+  img.onload = function () {
+    // check of width/height echt groter zijn dan een minimaal aantal px
+    if (img.naturalWidth < 2 || img.naturalHeight < 2) {
+      cb(placeholderUrl);
+    } else {
+      cb(url);
+    }
+  };
+  img.onerror = function () {
+    cb(placeholderUrl);
+  };
+  img.src = url;
+}
+
 
 function goBackToResults() {
     const detailContainer = document.getElementById('detail-container');
@@ -730,6 +761,10 @@ async function startHelpThread() {
     const userMessage = "help";
     displayUserMessage(userMessage);
     await sendHelpMessage(userMessage);
+}
+
+async function startNexiVoice(){
+    window.location.assign("https://nexinext.vercel.app/");
 }
 
 async function sendHelpMessage(message) {

@@ -103,7 +103,7 @@ button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
 }
-#new-chat-button,
+#new-chat-button,#nexi-voice-button,
 #help-button {
     background-color: white;
     color: black;
@@ -113,6 +113,13 @@ button:disabled {
     padding: 10px 15px;
     height: 48px;
 }
+
+#nexi-voice-button .button-icon {
+    margin-right: 5px;
+    width: 20px;
+    height: 20px;
+}
+
 #new-chat-button .button-icon,
 #help-button .button-icon {
     margin-right: 5px;
@@ -457,7 +464,7 @@ button:disabled {
         opacity: 1;
         visibility: visible;
     }
-    #new-chat-button, #help-button { display: none; }
+    #new-chat-button, #help-button,#nexi-voice-button { display: none; }
     .book-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .search-result { width: 45vw; height: auto; }
     .book-cover { width: 100%; height: auto; }
