@@ -418,7 +418,7 @@ function displayAgendaResults(results) {
     searchResultsContainer.classList.remove('book-grid');
     searchResultsContainer.classList.add('agenda-list');
 
-    const maxItems = 20;
+    const maxItems = 10;
     const limitedResults = results.slice(0, maxItems);
 
     limitedResults.forEach(result => {
@@ -464,7 +464,7 @@ function displayAgendaResults(results) {
         moreButton.innerHTML = 'Meer';
         moreButton.onclick = () => {
             const url = results[0].link || '#';
-            window.open(url, '_blank');
+            window.open("https://oba.nl/nl/agenda/volledige-agenda", '_blank');
         };
         searchResultsContainer.appendChild(moreButton);
     }
