@@ -300,7 +300,7 @@ def _build_search_params(
         "query_by": qb,
         "vector_query": vq,
         "filter_by": fb,
-        "Message": "Ik heb voor je gezocht en dit voor je gevonden",
+        "Message": "Ik heb voor je gezocht en deze boeken voor je gevonden",
         "STATUS": "KLAAR"
     }
 
@@ -367,7 +367,7 @@ def _build_compare_params(
         "query_by": query_by,
         "vector_query": vector,
         "filter_by": filter_by,
-        "Message": "Ik zocht iets vergelijkbaars. Wil je doelgroep/taal toevoegen?",
+        "Message": "Ik zocht iets vergelijkbaars, is dit wat je zocht?",
         "STATUS": "KLAAR",
     }
 
@@ -424,7 +424,7 @@ def _build_agenda_query(
         return {
             "URL": url,
             "API": api,
-            "Message": "Agenda-filters gezet. Nog aanpassen?",
+            "Message": "Ik heb deze activiteiten in de agenda gevonden",
             "STATUS": "KLAAR"
         }
 
@@ -435,7 +435,7 @@ def _build_agenda_query(
         "query_by": "embedding",
         "vector_query": "embedding:([], alpha: 0.8)",
         "filter_by": "",
-        "Message": "Ik zoek contextueel in de agenda. Locatie/datum toevoegen?",
+        "Message": "Ik zoek contextueel in de agenda",
         "STATUS": "KLAAR"
     }
 
@@ -448,7 +448,7 @@ def _build_faq_params(user_query: str) -> Dict[str, Any]:
         "query_by": "embedding",
         "vector_query": "embedding:([], alpha: 0.8)",
         "filter_by": "",
-        "Message": "Ik zoek in OBA Next veelgestelde vragen. Wil je verfijnen?",
+        "Message": "Ik zoek in OBA Next veelgestelde vragen. Wil je verfijnen?", # wordt geleegd doet niks
         "STATUS": "KLAAR",
     }
 
