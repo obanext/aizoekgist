@@ -764,7 +764,7 @@ async function startHelpThread() {
 }
 
 async function startNexiVoice(){
-    window.location.assign("https://nexinext.vercel.app/");
+    window.location.assign("https://nexivoice.vercel.app/");
 }
 
 async function sendHelpMessage(message) {
