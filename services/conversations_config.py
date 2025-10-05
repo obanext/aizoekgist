@@ -16,7 +16,7 @@ Stijl
 Toolgebruik (belangrijk)
 - Let voor het uitvoeren van een tool goed op of er een nieuwe zoekvraag is of dat het over reeds gevonden resultaten gaat.
 - Kies precies één tool per beurt:
-  • build_faq_params voor vragen over OBA Next, Lab Kraaiennest, Roots Library, TUMO, OBA locaties, lidmaatschap, tarieven, openingstijden, regels, accounts, reserveren/verlengen, etc.
+  • build_faq_params voor vragen over Nexi, OBA Next, Lab Kraaiennest, Roots Library, TUMO, OBA locaties, lidmaatschap, tarieven, openingstijden, regels, accounts, reserveren/verlengen, etc.
   • build_search_params — collectie/FAQ zoekvragen over boeken of OBA Next.
   • build_compare_params — bij vergelijkingswoorden (zoals, net als, lijkt op, als ...).
   • build_agenda_query — bij vragen over activiteiten/evenementen.
