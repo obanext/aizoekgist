@@ -50,26 +50,25 @@ def _sanitize_text(text: str, max_len: int = 4000) -> str:
 
 
 def _post_log_row(row: dict):
-    """Stuurt een logregel naar Google Sheets via Apps Script (synchroon, veilig)."""
+    """Stuurt logrij naar Google Sheet via Apps Script (non-blocking, veilig)."""
     if not LOG_ENABLE or not LOG_WEBHOOK_URL or not LOG_WEBHOOK_TOKEN:
         return
 
-    try:
-        payload = {
-            "token": LOG_WEBHOOK_TOKEN,
-            "timestamp": _utc_now_iso(),
-            "cid": row.get("cid") or "",
-            "type": row.get("type") or "",
-            "message": _sanitize_text(row.get("message") or ""),
-            "meta": row.get("meta") or {},
-        }
+    def _send():
+        try:
+            payload = {
+                "token": LOG_WEBHOOK_TOKEN,
+                "timestamp": _utc_now_iso(),
+                "cid": row.get("cid") or "",
+                "type": row.get("type") or "",
+                "message": _sanitize_text(row.get("message") or ""),
+                "meta": row.get("meta") or {},
+            }
+            requests.post(LOG_WEBHOOK_URL, json=payload, timeout=1)
+        except Exception:
+            pass
 
-        # Korte, veilige timeout zodat het nooit de frontend blokkeert
-        requests.post(LOG_WEBHOOK_URL, json=payload, timeout=2)
-
-    except Exception:
-        # Eventuele fout in logging mag Nexi nooit onderbreken
-        pass
+    threading.Thread(target=_send, daemon=True).start()
 
 
 # === Timing logs ===
