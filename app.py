@@ -48,27 +48,23 @@ def _sanitize_text(text: str, max_len: int = 4000) -> str:
         return text[:max_len] + f"… (trimmed {len(text) - max_len} chars)"
     return text
 
-
 def _post_log_row(row: dict):
-    """Stuurt logrij naar Google Sheet via Apps Script (non-blocking, veilig)."""
-    if not LOG_ENABLE or not LOG_WEBHOOK_URL or not LOG_WEBHOOK_TOKEN:
+    """Stuurt log via interne Vercel proxy (supersnel)."""
+    if not LOG_ENABLE or not LOG_WEBHOOK_TOKEN:
         return
-
-    def _send():
-        try:
-            payload = {
-                "token": LOG_WEBHOOK_TOKEN,
-                "timestamp": _utc_now_iso(),
-                "cid": row.get("cid") or "",
-                "type": row.get("type") or "",
-                "message": _sanitize_text(row.get("message") or ""),
-                "meta": row.get("meta") or {},
-            }
-            requests.post(LOG_WEBHOOK_URL, json=payload, timeout=1)
-        except Exception:
-            pass
-
-    threading.Thread(target=_send, daemon=True).start()
+    try:
+        payload = {
+            "token": LOG_WEBHOOK_TOKEN,
+            "cid": row.get("cid") or "",
+            "type": row.get("type") or "",
+            "message": _sanitize_text(row.get("message") or ""),
+            "meta": row.get("meta") or {},
+        }
+        # Proxy is binnen hetzelfde domein – zeer snel
+        requests.post("https://nexitext.vercel.app/api/log_proxy",
+                      json=payload, timeout=1)
+    except Exception:
+        pass
 
 
 # === Timing logs ===
