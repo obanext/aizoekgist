@@ -71,3 +71,5 @@ Tijdens de ontwikkeling zijn de volgende onderdelen gerealiseerd:
 - Logging, foutafhandeling en proxy-routes in Flask.
 - Configuratiebestand met **agenda-filters, leeftijdscategorieën en locaties**.
 - Backend zo opgezet dat zowel **Nexi Text** als **Nexi Voice** frontends erop aangesloten kunnen worden.
+
+Copyright (c) 2025 / OBA . Licensed under the MIT License / CC BY 4.0
