@@ -88,7 +88,7 @@ def typesense_search_books(params: Dict[str, Any]) -> List[Dict[str, Any]]:
         return []
 
 def typesense_search_faq(params: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Best-effort Typesense search (FAQ). Returns [{vraag, antwoord}, ...]."""
+    """Best-effort Typesense search (FAQ). Returns [{vraag, antwoord, location?}, ...]."""
     if not TYPESENSE_API_URL or not TYPESENSE_API_KEY:
         return []
 
@@ -112,13 +112,24 @@ def typesense_search_faq(params: Dict[str, Any]) -> List[Dict[str, Any]]:
         if r.status_code != 200:
             return []
         hits = r.json().get("results", [{}])[0].get("hits", [])
-        out = []
+        out: List[Dict[str, Any]] = []
         for h in hits:
             doc = h.get("document") or {}
             vraag = doc.get("vraag")
             antwoord = doc.get("antwoord")
+
+            # Locatie kan komma-gescheiden zijn, alleen eerste nodig
+            raw_loc = doc.get("locatie")
+            first_location: Optional[str] = None
+            if isinstance(raw_loc, str) and raw_loc.strip():
+                first_location = raw_loc.split(",")[0].strip()
+
             if vraag or antwoord:
-                out.append({"vraag": vraag, "antwoord": antwoord})
+                out.append({
+                    "vraag": vraag,
+                    "antwoord": antwoord,
+                    "location": first_location,
+                })
         return out
     except Exception:
         return []
@@ -166,4 +177,3 @@ def fetch_agenda_results(api_url: str) -> List[Dict[str, Any]]:
     except Exception as e:
         print(f"[AGENDA][fetch] request error: {e}", flush=True)
         return []
-
