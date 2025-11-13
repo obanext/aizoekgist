@@ -110,12 +110,22 @@ def _handle_tool_result(
 
     if name == "build_faq_params":
         faq_results = typesense_search_faq(result)
+
+        # Neem (indien aanwezig) de eerste locatie uit de FAQ-resultaten op in de envelope
+        loc: Optional[str] = None
+        if faq_results:
+            first = faq_results[0] or {}
+            loc_val = first.get("location")
+            if isinstance(loc_val, str) and loc_val.strip():
+                loc = loc_val.strip()
+
         envelope = make_envelope(
             "faq",
             results=faq_results,
             url=None,
             message=(NO_RESULTS_MSG if not faq_results else None),
             thread_id=conversation_id,
+            location=loc,
         )
         return {"envelope": envelope, "output_item": output_item}
 
@@ -254,4 +264,3 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
 
     print("message " + (envelope.get("response") or {}).get("message", ""), flush=True)
     return envelope or make_envelope("text", results=[], url=None, message=(ack_text or "Klaar."), thread_id=conversation_id)
-
