@@ -12,7 +12,6 @@ from services.oba_helpers import (
     typesense_search_books,
     fetch_agenda_results,
     typesense_search_faq,
-    typesense_search_events,
 )
 from services.conversations_config import (
     MODEL,
@@ -182,15 +181,7 @@ def _handle_tool_result(
                 thread_id=conversation_id,
             )
         elif result.get("collection") == COLLECTION_EVENTS:
-            # Scenario B: contextuele zoekvraag in Typesense event-collectie
-            ag_results = typesense_search_events(result)
-            envelope = make_envelope(
-                "agenda",
-                results=ag_results,
-                url=None,
-                message=(NO_RESULTS_MSG if not ag_results else result.get("Message")),
-                thread_id=conversation_id,
-            )
+            envelope = make_envelope("agenda", results=[], url=None, message=NO_RESULTS_MSG, thread_id=conversation_id)
         else:
             envelope = make_envelope("agenda", results=[], url=None, message=NO_RESULTS_MSG, thread_id=conversation_id)
 
