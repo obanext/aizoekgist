@@ -79,7 +79,7 @@ def typesense_search_books(params: Dict[str, Any]) -> List[Dict[str, Any]]:
         print(f"[TS] Collection={body['searches'][0]['collection']} hits={len(hits)}", flush=True)
         if hits:
             print(f"[TS] First doc keys: {list(hits[0].get('document', {}).keys())}", flush=True)
-        out = []
+        out: List[Dict[str, Any]] = []
         for h in hits:
             doc = h.get("document") or {}
             out.append({"ppn": doc.get("ppn"), "short_title": doc.get("short_title")})
@@ -134,10 +134,52 @@ def typesense_search_faq(params: Dict[str, Any]) -> List[Dict[str, Any]]:
     except Exception:
         return []
 
+def typesense_search_events(params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Best-effort Typesense search (agenda events)."""
+    if not TYPESENSE_API_URL or not TYPESENSE_API_KEY:
+        return []
+
+    body = {"searches": [{
+        "q": params.get("q"),
+        "query_by": params.get("query_by"),
+        "collection": params.get("collection"),
+        "prefix": "false",
+        "vector_query": params.get("vector_query") or "",
+        "include_fields": "*",
+        "per_page": 15,
+        "filter_by": params.get("filter_by") or "",
+    }]}
+
+    try:
+        r = requests.post(
+            TYPESENSE_API_URL,
+            json=body,
+            headers={"Content-Type": "application/json", "X-TYPESENSE-API-KEY": TYPESENSE_API_KEY},
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return []
+
+        hits = r.json().get("results", [{}])[0].get("hits", [])
+        out: List[Dict[str, Any]] = []
+
+        for h in hits:
+            doc = h.get("document") or {}
+            out.append({
+                "title": doc.get("title"),
+                "summary": doc.get("summary"),
+                "date": doc.get("date"),
+                "time": doc.get("time"),
+                "location": doc.get("locatienaam"),
+                "link": doc.get("link"),
+            })
+
+        return out
+    except Exception:
+        return []
+
 
 # --- OBA Agenda ---
-# services/oba_helpers.py
-
 def fetch_agenda_results(api_url: str) -> List[Dict[str, Any]]:
     """Fetch agenda XML en geef lijst met {title, cover, link, summary} terug."""
     if not api_url:
