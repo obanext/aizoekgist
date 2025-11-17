@@ -1,17 +1,22 @@
+# services/conversations_client.py
 import json
 from typing import Any, List, Dict, Optional, Union
+
 from openai import OpenAI
+
 from services.oba_config import TOOLS
 from services.oba_tools import (
     TOOL_IMPLS,
     COLLECTION_BOOKS,
-    COLLECTION_EVENTS, COLLECTION_BOOKS_KN,
+    COLLECTION_EVENTS,
+    COLLECTION_BOOKS_KN,
 )
 from services.oba_helpers import (
     make_envelope,
     typesense_search_books,
     fetch_agenda_results,
     typesense_search_faq,
+    typesense_search_events,
 )
 from services.conversations_config import (
     MODEL,
@@ -19,10 +24,12 @@ from services.conversations_config import (
     SYSTEM,
     NO_RESULTS_MSG,
 )
+
 client = OpenAI()
 
 # Per-conversatie cache van laatste resultaten (boeken of agenda)
 LAST_RESULTS: dict[str, dict] = {}
+
 
 def _results_context_block(data: dict, max_items: int = 20) -> str:
     """Bouw een compact SYSTEM-contextblok op basis van laatste resultaten."""
@@ -44,10 +51,10 @@ def _results_context_block(data: dict, max_items: int = 20) -> str:
     elif kind == "agenda":
         for it in items:
             title = (it.get("title") or "").strip()
-            date  = (it.get("date") or "").strip()
-            time  = (it.get("time") or "").strip()
-            loc   = (it.get("location") or "").strip()
-            summ  = (it.get("summary") or "").replace("\n", " ").strip()
+            date = (it.get("date") or "").strip()
+            time = (it.get("time") or "").strip()
+            loc = (it.get("location") or "").strip()
+            summ = (it.get("summary") or "").replace("\n", " ").strip()
             if summ and len(summ) > 500:
                 summ = summ[:500] + "…"
             lines.append(
@@ -66,6 +73,7 @@ def _results_context_block(data: dict, max_items: int = 20) -> str:
 def create_conversation() -> str:
     print("Creating conversation...")
     return client.conversations.create().id
+
 
 def _extract_tool_calls(resp) -> List[Any]:
     """Haal top-level tool/function calls uit een Responses-result."""
@@ -158,6 +166,7 @@ def _handle_tool_result(
 
     if name == "build_agenda_query":
         if "API" in result and "URL" in result:
+            # Scenario A: XML agenda via OBA API
             ag_results = fetch_agenda_results(result["API"])
             if ag_results:
                 LAST_RESULTS[conversation_id] = {
@@ -166,7 +175,7 @@ def _handle_tool_result(
                         {
                             "title": it.get("title"),
                             "summary": it.get("summary"),
-                            "date": it.get("date") or (it.get("raw_date") or {}).get("start"),
+                            "date": it.get("date") or (it.get("raw_date") or {}).get("start") if isinstance(it.get("raw_date"), dict) else it.get("date"),
                             "time": it.get("time"),
                             "location": it.get("location"),
                         }
@@ -181,14 +190,57 @@ def _handle_tool_result(
                 thread_id=conversation_id,
             )
         elif result.get("collection") == COLLECTION_EVENTS:
-            envelope = make_envelope("agenda", results=[], url=None, message=NO_RESULTS_MSG, thread_id=conversation_id)
+            # Scenario B: contextuele agendazoekvraag via Typesense events
+            ag_results = typesense_search_events(result)
+
+            if ag_results:
+                LAST_RESULTS[conversation_id] = {
+                    "kind": "agenda",
+                    "items": [
+                        {
+                            "title": it.get("title"),
+                            "summary": it.get("summary"),
+                            "date": it.get("date") or (it.get("raw_date") or {}).get("start") if isinstance(it.get("raw_date"), dict) else it.get("date"),
+                            "time": it.get("time"),
+                            "location": it.get("location"),
+                        }
+                        for it in ag_results[:20]
+                    ],
+                }
+
+            first_location: Optional[str] = None
+            if ag_results:
+                loc_val = ag_results[0].get("location")
+                if isinstance(loc_val, str) and loc_val.strip():
+                    first_location = loc_val.strip()
+
+            envelope = make_envelope(
+                "agenda",
+                results=ag_results,
+                url=None,
+                message=(NO_RESULTS_MSG if not ag_results else result.get("Message")),
+                thread_id=conversation_id,
+                location=first_location,
+            )
         else:
-            envelope = make_envelope("agenda", results=[], url=None, message=NO_RESULTS_MSG, thread_id=conversation_id)
+            envelope = make_envelope(
+                "agenda",
+                results=[],
+                url=None,
+                message=NO_RESULTS_MSG,
+                thread_id=conversation_id,
+            )
 
         return {"envelope": envelope, "output_item": output_item}
 
     # Onbekende tool
-    envelope = make_envelope("text", results=[], url=None, message="Onbekende tool.", thread_id=conversation_id)
+    envelope = make_envelope(
+        "text",
+        results=[],
+        url=None,
+        message="Onbekende tool.",
+        thread_id=conversation_id,
+    )
     return {"envelope": envelope, "output_item": output_item}
 
 
@@ -227,7 +279,13 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
     calls = _extract_tool_calls(resp)
     if not calls:
         text = (resp.output_text or "").strip()
-        return make_envelope("text", results=[], url=None, message=text, thread_id=conversation_id)
+        return make_envelope(
+            "text",
+            results=[],
+            url=None,
+            message=text,
+            thread_id=conversation_id,
+        )
 
     # 3) Verwerk alle toolcalls
     envelope: Optional[Dict[str, Any]] = None
@@ -263,4 +321,10 @@ def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str,
         envelope["response"]["message"] = ack_text or envelope["response"].get("message")
 
     print("message " + (envelope.get("response") or {}).get("message", ""), flush=True)
-    return envelope or make_envelope("text", results=[], url=None, message=(ack_text or "Klaar."), thread_id=conversation_id)
+    return envelope or make_envelope(
+        "text",
+        results=[],
+        url=None,
+        message=(ack_text or "Klaar."),
+        thread_id=conversation_id,
+    )
