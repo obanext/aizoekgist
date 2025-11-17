@@ -10,6 +10,7 @@ TYPESENSE_API_URL = os.getenv("TYPESENSE_API_URL")
 TYPESENSE_API_KEY = os.getenv("TYPESENSE_API_KEY")
 OBA_API_KEY       = os.getenv("OBA_API_KEY", "")
 
+
 # --- Message helpers ---
 def normalize_message(raw: Any) -> Optional[str]:
     if raw is None:
@@ -24,6 +25,7 @@ def normalize_message(raw: Any) -> Optional[str]:
         except Exception:
             return raw
     return str(raw)
+
 
 def make_envelope(
     resp_type: str,
@@ -43,6 +45,7 @@ def make_envelope(
         },
         "thread_id": thread_id,
     }
+
 
 # --- Typesense ---
 def typesense_search_books(params: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -86,6 +89,7 @@ def typesense_search_books(params: Dict[str, Any]) -> List[Dict[str, Any]]:
         return out
     except Exception:
         return []
+
 
 def typesense_search_faq(params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Best-effort Typesense search (FAQ). Returns [{vraag, antwoord, location?}, ...]."""
@@ -135,9 +139,71 @@ def typesense_search_faq(params: Dict[str, Any]) -> List[Dict[str, Any]]:
         return []
 
 
-# --- OBA Agenda ---
-# services/oba_helpers.py
+def typesense_search_events(params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Best-effort Typesense search (agenda/events).
 
+    Verwacht een collectie met o.a. velden:
+    - titel
+    - samenvatting
+    - deeplink
+    - locatienaam / gebouw
+    - starttijd / eindtijd
+    """
+    if not TYPESENSE_API_URL or not TYPESENSE_API_KEY:
+        return []
+
+    body = {
+        "searches": [{
+            "q": params.get("q"),
+            "query_by": params.get("query_by"),
+            "collection": params.get("collection"),
+            "prefix": "false",
+            "vector_query": params.get("vector_query") or "",
+            "include_fields": "*",
+            "per_page": 15,
+            "filter_by": params.get("filter_by") or "",
+        }]
+    }
+
+    try:
+        r = requests.post(
+            TYPESENSE_API_URL,
+            json=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-TYPESENSE-API-KEY": TYPESENSE_API_KEY,
+            },
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return []
+
+        hits = r.json().get("results", [{}])[0].get("hits", [])
+        out: List[Dict[str, Any]] = []
+        for h in hits:
+            doc = h.get("document") or {}
+
+            start = doc.get("starttijd")
+            end = doc.get("eindtijd")
+            location = doc.get("locatienaam") or doc.get("gebouw")
+
+            out.append({
+                "title": doc.get("titel"),
+                "summary": doc.get("samenvatting"),
+                "cover": "",
+                "link": doc.get("deeplink"),
+                "date": start,
+                "time": "",
+                "location": location,
+                "raw_date": {"start": start, "end": end} if (start or end) else None,
+            })
+        return out
+    except Exception:
+        return []
+
+
+# --- OBA Agenda ---
 def fetch_agenda_results(api_url: str) -> List[Dict[str, Any]]:
     """Fetch agenda XML en geef lijst met {title, cover, link, summary} terug."""
     if not api_url:
