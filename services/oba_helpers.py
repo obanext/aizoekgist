@@ -140,16 +140,6 @@ def typesense_search_faq(params: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def typesense_search_events(params: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """
-    Best-effort Typesense search (agenda/events).
-
-    Verwacht een collectie met o.a. velden:
-    - titel
-    - samenvatting
-    - deeplink
-    - locatienaam / gebouw
-    - starttijd / eindtijd
-    """
     if not TYPESENSE_API_URL or not TYPESENSE_API_KEY:
         return []
 
@@ -160,7 +150,7 @@ def typesense_search_events(params: Dict[str, Any]) -> List[Dict[str, Any]]:
             "collection": params.get("collection"),
             "prefix": "false",
             "vector_query": params.get("vector_query") or "",
-            "include_fields": "*",
+            "include_fields": "*,locatienaam,gebouw",
             "per_page": 15,
             "filter_by": params.get("filter_by") or "",
         }]
@@ -201,6 +191,7 @@ def typesense_search_events(params: Dict[str, Any]) -> List[Dict[str, Any]]:
         return out
     except Exception:
         return []
+
 
 
 # --- OBA Agenda ---
