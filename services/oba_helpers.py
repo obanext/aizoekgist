@@ -237,7 +237,16 @@ def fetch_agenda_results(api_url: str) -> List[Dict[str, Any]]:
             cover = (res.findtext(".//coverimages/coverimage") or "").strip()
             link = (res.findtext(".//custom/evenement/deeplink") or "").strip()
             summary = (res.findtext(".//summaries/summary") or "").strip()
-            out.append({"title": title, "cover": cover, "link": link, "summary": summary})
+            loc = res.findtext(".//custom/gebeurtenis/locatienaam")
+
+            out.append({
+                "title": title,
+                "cover": cover,
+                "link": link,
+                "summary": summary,
+                "location": (loc or "").strip()
+            })
+
         return out
 
     except Exception as e:
