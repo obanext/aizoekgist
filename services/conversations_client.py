@@ -168,6 +168,7 @@ def _handle_tool_result(
         if "API" in result and "URL" in result:
             # Scenario A: XML agenda via OBA API
             ag_results = fetch_agenda_results(result["API"])
+
             if ag_results:
                 LAST_RESULTS[conversation_id] = {
                     "kind": "agenda",
@@ -182,13 +183,23 @@ def _handle_tool_result(
                         for it in ag_results[:20]
                     ],
                 }
+
+            first_location = None
+            if ag_results:
+                loc_val = ag_results[0].get("location")
+                if isinstance(loc_val, str) and loc_val.strip():
+                    first_location = loc_val.strip()
+
             envelope = make_envelope(
                 "agenda",
                 results=ag_results,
                 url=result.get("URL"),
                 message=(NO_RESULTS_MSG if not ag_results else result.get("Message")),
                 thread_id=conversation_id,
+                location=first_location,
             )
+            return {"envelope": envelope, "output_item": output_item}
+
         elif result.get("collection") == COLLECTION_EVENTS:
             # Scenario B: contextuele agendazoekvraag via Typesense events
             ag_results = typesense_search_events(result)
