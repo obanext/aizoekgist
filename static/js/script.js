@@ -1,3 +1,5 @@
+// /static/js/script.js
+
 let thread_id = null;
 let timeoutHandle = null;
 let previousResults = [];
@@ -281,6 +283,8 @@ async function sendMessage() {
         if (!response.ok) { showErrorMessage(); return; }
 
         const data = await response.json();
+        console.log("[NEXITEXT][OUTPUT][SEND]", data);
+
         hideLoader();
         clearTimeout(timeoutHandle);
 
@@ -408,7 +412,7 @@ function displaySearchResults(results) {
         searchResultsContainer.appendChild(resultElement);
         const imgEl = resultElement.querySelector('img');
         loadCoverOrPlaceholder(imgEl.src, '/static/images/placeholder.png', (src) => {
-        imgEl.src = src;
+            imgEl.src = src;
         });
     });
 
@@ -573,7 +577,7 @@ async function fetchAndShowDetailPage(ppn) {
             `;
             const imgEl = detailContainer.querySelector('.detail-cover');
             loadCoverOrPlaceholder(imgEl.src, '/static/images/placeholder.png', (src) => {
-            imgEl.src = src;
+                imgEl.src = src;
             });
 
             const currentUrl = window.location.href.split('?')[0];
@@ -594,7 +598,6 @@ async function fetchAndShowDetailPage(ppn) {
 function loadCoverOrPlaceholder(url, placeholderUrl, cb) {
   const img = new Image();
   img.onload = function () {
-    // check of width/height echt groter zijn dan een minimaal aantal px
     if (img.naturalWidth < 2 || img.naturalHeight < 2) {
       cb(placeholderUrl);
     } else {
@@ -606,7 +609,6 @@ function loadCoverOrPlaceholder(url, placeholderUrl, cb) {
   };
   img.src = url;
 }
-
 
 function goBackToResults() {
     const detailContainer = document.getElementById('detail-container');
@@ -675,6 +677,8 @@ async function applyFiltersAndSend() {
         if (!response.ok) { hideLoader(); return; }
 
         const data = await response.json();
+        console.log("[NEXITEXT][OUTPUT][FILTER]", data);
+
         hideLoader();
 
         const { response: resp, thread_id: newTid } = data;
@@ -732,7 +736,6 @@ async function applyFiltersAndSend() {
 
     checkInput();
 }
-
 
 function startNewChat() {
     startThread();
