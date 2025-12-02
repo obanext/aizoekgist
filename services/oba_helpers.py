@@ -140,6 +140,7 @@ def typesense_search_faq(params: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def typesense_search_events(params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    
     if not TYPESENSE_API_URL or not TYPESENSE_API_KEY:
         return []
 
@@ -150,7 +151,7 @@ def typesense_search_events(params: Dict[str, Any]) -> List[Dict[str, Any]]:
             "collection": params.get("collection"),
             "prefix": "false",
             "vector_query": params.get("vector_query") or "",
-            "include_fields": "*,locatienaam,gebouw",
+            "include_fields": "*",
             "per_page": 15,
             "filter_by": params.get("filter_by") or "",
         }]
@@ -171,27 +172,35 @@ def typesense_search_events(params: Dict[str, Any]) -> List[Dict[str, Any]]:
 
         hits = r.json().get("results", [{}])[0].get("hits", [])
         out: List[Dict[str, Any]] = []
+
         for h in hits:
             doc = h.get("document") or {}
 
             start = doc.get("starttijd")
             end = doc.get("eindtijd")
-            location = doc.get("locatienaam") or doc.get("gebouw")
 
+         
+            title = doc.get("titel") or "Geen titel"
+            summary = doc.get("samenvatting") or ""
+            cover = doc.get("afbeelding") or ""
+            link = doc.get("deeplink") or "#"
+            location = doc.get("locatienaam") or doc.get("gebouw") or "Locatie onbekend"
+            
             out.append({
-                "title": doc.get("titel"),
-                "summary": doc.get("samenvatting"),
-                "cover": "",
-                "link": doc.get("deeplink"),
+                "title": title,
+                "summary": summary,
+                "cover": cover,
+                "link": link,
                 "date": start,
                 "time": "",
                 "location": location,
-                "raw_date": {"start": start, "end": end} if (start or end) else None,
+                "raw_date": {"start": start, "end": end} if (start or end) else None
             })
+
         return out
+
     except Exception:
         return []
-
 
 
 # --- OBA Agenda ---
