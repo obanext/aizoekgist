@@ -1,37 +1,39 @@
 <div id="filter-options">
-  <div class="filters-wrap">
-    <!-- Fictie -->
-    <label class="filter-label" for="books-indeling-fiction">Fictie</label>
-    <select id="books-indeling-fiction">
-      <option value="">– Kies fictie –</option>
-      <option value="prentenboeken baby">Prentenboeken baby</option>
-      <option value="prentenboeken tot 4 jaar">Prentenboeken tot 4 jaar</option>
-      <option value="prentenboeken vanaf 4 jaar">Prentenboeken vanaf 4 jaar</option>
-      <option value="fictie tot 9 jaar">Fictie tot 9 jaar</option>
-      <option value="fictie 9 tot 12 jaar">Fictie 9 tot 12 jaar</option>
-      <option value="fictie vanaf 12 jaar">Fictie vanaf 12 jaar</option>
-      <option value="fictie vanaf 15 jaar">Fictie vanaf 15 jaar</option>
-      <option value="fictie Volwassenen">Fictie volwassenen</option>
-    </select>
-    <!-- Non-fictie -->
-    <label class="filter-label" for="books-indeling-nonfiction">Non-fictie</label>
-    <select id="books-indeling-nonfiction">
-      <option value="">– Kies non-fictie –</option>
-      <option value="info tot 9 jaar">Info tot 9 jaar</option>
-      <option value="info vanaf 9 jaar">Info vanaf 9 jaar</option>
-      <option value="info volwassenen">Info volwassenen</option>
-    </select>
-    <!-- Taal -->
-    <label class="filter-label" for="books-language">Taal</label>
-    <select id="books-language">
-      <option value="">– Kies taal –</option>
-      <option value="Nederlands">Nederlands</option>
-      <option value="Engels">Engels</option>
-      <option value="Duits">Duits</option>
-      <option value="Frans">Frans</option>
-      <option value="Spaans">Spaans</option>
-      <option value="Turks">Turks</option>
-      <option value="Arabisch">Arabisch</option>
-    </select>
-  </div>
+
+  <fieldset class="filter-group">
+    <legend>Fictie</legend>
+
+    <label><input type="radio" name="fictie" value="prentenboeken baby"> Prentenboeken baby</label>
+    <label><input type="radio" name="fictie" value="prentenboeken tot 4 jaar"> Prentenboeken tot 4 jaar</label>
+    <label><input type="radio" name="fictie" value="prentenboeken vanaf 4 jaar"> Prentenboeken vanaf 4 jaar</label>
+    <label><input type="radio" name="fictie" value="fictie tot 9 jaar"> Fictie tot 9 jaar</label>
+    <label><input type="radio" name="fictie" value="fictie 9 tot 12 jaar"> Fictie 9 tot 12 jaar</label>
+    <label><input type="radio" name="fictie" value="fictie vanaf 12 jaar"> Fictie vanaf 12 jaar</label>
+    <label><input type="radio" name="fictie" value="fictie vanaf 15 jaar"> Fictie vanaf 15 jaar</label>
+    <label><input type="radio" name="fictie" value="fictie Volwassenen"> Fictie volwassenen</label>
+
+  </fieldset>
+
+  <fieldset class="filter-group">
+    <legend>Non-fictie</legend>
+
+    <label><input type="radio" name="nonfictie" value="info tot 9 jaar"> Info tot 9 jaar</label>
+    <label><input type="radio" name="nonfictie" value="info vanaf 9 jaar"> Info vanaf 9 jaar</label>
+    <label><input type="radio" name="nonfictie" value="info volwassenen"> Info volwassenen</label>
+
+  </fieldset>
+
+  <fieldset class="filter-group">
+    <legend>Taal</legend>
+
+    <label><input type="radio" name="language" value="Nederlands"> Nederlands</label>
+    <label><input type="radio" name="language" value="Engels"> Engels</label>
+    <label><input type="radio" name="language" value="Duits"> Duits</label>
+    <label><input type="radio" name="language" value="Frans"> Frans</label>
+    <label><input type="radio" name="language" value="Spaans"> Spaans</label>
+    <label><input type="radio" name="language" value="Turks"> Turks</label>
+    <label><input type="radio" name="language" value="Arabisch"> Arabisch</label>
+
+  </fieldset>
+
 </div>
