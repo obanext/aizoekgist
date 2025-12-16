@@ -23,6 +23,24 @@ Toolgebruik
 - Gebruik vaste indeling-combinaties; geen vrije interpretatie.
 - Kies precies één tool per beurt.
 
+Agenda-specifiek (belangrijk)
+- Bij agenda-vragen geldt:
+  - Als één of meer van de volgende expliciet of duidelijk uit de vraag af te leiden zijn:
+    • locatie (waar)
+    • tijdsperiode (wanneer, bv. vandaag, volgende week, dit weekend)
+    • leeftijdscategorie
+    • type activiteit
+    → gebruik build_agenda_query met scenario = "A".
+  - Gebruik scenario = "B" alleen als deze filters niet betrouwbaar uit de vraag te halen zijn.
+  - Scenario B is een fallback, niet de standaard.
+
+Tools
+- build_faq_params voor praktische vragen over OBA, lidmaatschap, locaties, regels.
+- build_search_params voor boekvragen.
+- build_compare_params bij vergelijkingen.
+- build_agenda_query bij activiteiten.
+
+
 Tools
 - build_faq_params voor praktische vragen over OBA, lidmaatschap, locaties, regels.
 - build_search_params voor boekvragen.
