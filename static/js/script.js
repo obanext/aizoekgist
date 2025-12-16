@@ -5,7 +5,7 @@ let timeoutHandle = null;
 let previousResults = [];
 let linkedPPNs = new Set();
 
-/* ===== Mobiele helpers ===== */
+/* ===== Mobiele helpers: panel state, overlay, history ===== */
 function openFilterPanel(pushHistory = true) {
     const panel = document.getElementById('filter-section');
     const other = document.getElementById('result-section');
@@ -33,7 +33,9 @@ function closeFilterPanel(useHistoryBack = false) {
         document.body.classList.remove('panel-open');
     }
     updateActionButtons();
-    if (useHistoryBack && history.state?.panel === 'filters') history.back();
+    if (useHistoryBack && history.state && history.state.panel === 'filters') {
+        history.back();
+    }
 }
 
 function closeResultPanel(useHistoryBack = false) {
@@ -43,15 +45,23 @@ function closeResultPanel(useHistoryBack = false) {
         document.body.classList.remove('panel-open');
     }
     updateActionButtons();
-    if (useHistoryBack && history.state?.panel === 'results') history.back();
+    if (useHistoryBack && history.state && history.state.panel === 'results') {
+        history.back();
+    }
 }
 
 function closeAnyPanel() {
+    const hasOpen =
+        document.getElementById('filter-section').classList.contains('open') ||
+        document.getElementById('result-section').classList.contains('open');
     closeFilterPanel();
     closeResultPanel();
+    if (hasOpen && history.state && history.state.panel) {
+        history.back();
+    }
 }
 
-/* ===== Input & buttons ===== */
+/* ===== Input & knoppen ===== */
 function checkInput() {
     const userInput = document.getElementById('user-input').value.trim();
     const sendButton = document.getElementById('send-button');
@@ -83,7 +93,11 @@ async function loadFilterTemplate(type) {
     let url = "";
     if (type === "collection") url = "/static/html/filtercollectie.html";
     if (type === "agenda") url = "/static/html/filteragenda.html";
-    if (!url) return;
+
+    if (!url) {
+        document.getElementById("filter-options").innerHTML = "";
+        return;
+    }
 
     const res = await fetch(url);
     const html = await res.text();
@@ -96,34 +110,47 @@ async function loadFilterTemplate(type) {
 }
 
 function resetFilters() {
-    document.querySelectorAll('#filter-options input[type="radio"]').forEach(r => r.checked = false);
+    document.querySelectorAll('#filter-options input[type="radio"]').forEach(r => {
+        r.checked = false;
+    });
     checkInput();
 }
 
 /* ===== Chat ===== */
 async function startThread() {
-    const r = await fetch('/start_thread', { method: 'POST' });
-    const d = await r.json();
-    thread_id = d.thread_id;
+    const response = await fetch('/start_thread', { method: 'POST' });
+    const data = await response.json();
+    thread_id = data.thread_id;
 }
 
 async function sendMessage() {
-    const input = document.getElementById('user-input').value.trim();
-    if (!input) return;
+    const userInput = document.getElementById('user-input').value.trim();
+    if (userInput === "") return;
 
-    displayUserMessage(input);
+    displayUserMessage(userInput);
     showLoader();
+
     document.getElementById('user-input').value = '';
     checkInput();
 
+    timeoutHandle = setTimeout(() => { showErrorMessage(); }, 30000);
+
     try {
-        const r = await fetch('/send_message', {
+        const response = await fetch('/send_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ thread_id, user_input: input })
+            body: JSON.stringify({ thread_id, user_input: userInput })
         });
-        const data = await r.json();
+
+        if (!response.ok) {
+            showErrorMessage();
+            return;
+        }
+
+        const data = await response.json();
         hideLoader();
+        clearTimeout(timeoutHandle);
+
         handleResponse(data.response);
     } catch {
         showErrorMessage();
@@ -133,22 +160,31 @@ async function sendMessage() {
 function handleResponse(resp) {
     if (!resp) return;
 
-    if (resp.type === 'collection') {
-        previousResults = resp.results || [];
-        displaySearchResults(previousResults);
-        if (resp.message) displayAssistantMessage(resp.message);
-        loadFilterTemplate("collection");
-    } else if (resp.type === 'agenda') {
-        previousResults = resp.results || [];
-        displayAgendaResults(previousResults);
-        if (resp.message) displayAssistantMessage(resp.message);
-        loadFilterTemplate("agenda");
-    } else if (resp.type === 'faq') {
-        if (resp.message) displayAssistantMessage(resp.message);
-        previousResults = [];
-    } else {
-        displayAssistantMessage(resp.message || 'Onbekend antwoord.');
-        previousResults = [];
+    switch (resp.type) {
+        case 'collection':
+            previousResults = resp.results || [];
+            displaySearchResults(previousResults);
+            if (resp.message) displayAssistantMessage(resp.message);
+            loadFilterTemplate("collection");
+            break;
+
+        case 'agenda':
+            previousResults = resp.results || [];
+            displayAgendaResults(previousResults);
+            if (resp.message) displayAssistantMessage(resp.message);
+            loadFilterTemplate("agenda");
+            break;
+
+        case 'faq':
+            if (resp.message) displayAssistantMessage(resp.message);
+            previousResults = [];
+            document.getElementById("filter-options").innerHTML = "";
+            break;
+
+        default:
+            displayAssistantMessage(resp.message || 'Ik heb je vraag niet begrepen.');
+            previousResults = [];
+            document.getElementById("filter-options").innerHTML = "";
     }
 
     resetFilters();
@@ -160,23 +196,23 @@ async function applyFiltersAndSend() {
 
     const agendaLocation = document.getElementById("agenda-location");
     if (agendaLocation) {
-        const sel = [];
-        if (agendaLocation.value) sel.push(`Locatie: ${agendaLocation.value}`);
-        if (document.getElementById("agenda-age")?.value) sel.push(`Leeftijd: ${document.getElementById("agenda-age").value}`);
-        if (document.getElementById("agenda-date")?.value) sel.push(`Wanneer: ${document.getElementById("agenda-date").value}`);
-        if (document.getElementById("agenda-type")?.value) sel.push(`Type: ${document.getElementById("agenda-type").value}`);
-        filterString = sel.join("||");
+        const selected = [];
+        if (agendaLocation.value) selected.push(`Locatie: ${agendaLocation.value}`);
+        if (document.getElementById("agenda-age")?.value) selected.push(`Leeftijd: ${document.getElementById("agenda-age").value}`);
+        if (document.getElementById("agenda-date")?.value) selected.push(`Wanneer: ${document.getElementById("agenda-date").value}`);
+        if (document.getElementById("agenda-type")?.value) selected.push(`Type: ${document.getElementById("agenda-type").value}`);
+        filterString = selected.join("||");
     } else {
-        const sel = [];
+        const selected = [];
         const fic  = document.querySelector('input[name="fictie"]:checked');
         const nonf = document.querySelector('input[name="nonfictie"]:checked');
         const lang = document.querySelector('input[name="language"]:checked');
 
-        if (fic)  sel.push(`Indeling: ${fic.value}`);
-        if (nonf) sel.push(`Indeling: ${nonf.value}`);
-        if (lang) sel.push(`Taal: ${lang.value}`);
+        if (fic)  selected.push(`Indeling: ${fic.value}`);
+        if (nonf) selected.push(`Indeling: ${nonf.value}`);
+        if (lang) selected.push(`Taal: ${lang.value}`);
 
-        filterString = sel.join("||");
+        filterString = selected.join("||");
     }
 
     if (!filterString) return;
@@ -185,39 +221,45 @@ async function applyFiltersAndSend() {
     showLoader();
 
     try {
-        const r = await fetch('/apply_filters', {
+        const response = await fetch('/apply_filters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ thread_id, filter_values: filterString })
         });
-        const data = await r.json();
+
+        if (!response.ok) {
+            hideLoader();
+            return;
+        }
+
+        const data = await response.json();
         hideLoader();
         handleResponse(data.response);
     } catch {
-        showErrorMessage();
+        hideLoader();
     }
 }
 
 /* ===== UI helpers ===== */
-function displayUserMessage(msg) {
+function displayUserMessage(message) {
     const el = document.createElement('div');
     el.className = 'user-message';
-    el.textContent = msg;
+    el.textContent = message;
     document.getElementById('messages').appendChild(el);
 }
 
-function displayAssistantMessage(msg) {
+function displayAssistantMessage(message) {
     const el = document.createElement('div');
     el.className = 'assistant-message';
-    el.innerHTML = msg;
+    el.innerHTML = message;
     document.getElementById('messages').appendChild(el);
 }
 
 function showLoader() {
     const el = document.createElement('div');
     el.id = 'loader';
-    el.className = 'assistant-message';
-    el.textContent = '...';
+    el.className = 'assistant-message loader';
+    el.innerHTML = '<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>';
     document.getElementById('messages').appendChild(el);
 }
 
@@ -227,13 +269,26 @@ function hideLoader() {
 
 function showErrorMessage() {
     hideLoader();
-    displayAssistantMessage('Er is iets misgegaan.');
+    displayAssistantMessage('er is iets misgegaan, we beginnen opnieuw');
+    resetThread();
+}
+
+function resetThread() {
+    startThread();
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('filter-options').innerHTML = '';
+    addOpeningMessage();
 }
 
 /* ===== Init ===== */
+document.getElementById('user-input').addEventListener('input', checkInput);
+document.getElementById('user-input').addEventListener('keypress', e => {
+    if (e.key === 'Enter') sendMessage();
+});
+
 window.onload = async () => {
     await startThread();
+    addOpeningMessage();
     checkInput();
-    document.getElementById('send-button').onclick = sendMessage;
-    document.getElementById('apply-filters-button').onclick = applyFiltersAndSend;
 };
