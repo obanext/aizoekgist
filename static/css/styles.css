@@ -475,3 +475,21 @@ button:disabled {
     display: none;
 }
 
+.filter-group {
+    border: none;
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+.filter-group legend {
+    font-family: 'Avenir Black', Arial, sans-serif;
+    margin-bottom: 8px;
+}
+
+.filter-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    cursor: pointer;
+}
