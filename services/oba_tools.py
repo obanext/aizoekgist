@@ -71,7 +71,7 @@ def _build_search_params(
     else:
         vq = ""
 
-    indeling = []
+    indeling: List[str] = []
 
     if audience and content_type in ("fictie", "beide"):
         indeling += FICTION_MAP.get(audience, [])
@@ -80,7 +80,6 @@ def _build_search_params(
         indeling += NONFICTION_MAP.get(audience, [])
 
     fb = _mk_filter_by(indeling_list=indeling, language=language)
-
     books = COLLECTION_BOOKS_KN if location_kraaiennest else COLLECTION_BOOKS
 
     return {
@@ -90,6 +89,64 @@ def _build_search_params(
         "vector_query": vq,
         "filter_by": fb,
         "Message": "Ik heb voor je gezocht en deze boeken gevonden",
+        "STATUS": "KLAAR",
+    }
+
+def _build_agenda_query(
+    scenario: str,
+    waar: Optional[str] = None,
+    leeftijd: Optional[str] = None,
+    wanneer: Optional[str] = None,
+    type_activiteit: Optional[str] = None,
+    agenda_text: Optional[str] = None,
+) -> Dict[str, Any]:
+
+    scenario = (scenario or "").upper().strip()
+
+    if waar and waar.lower() in ("oosterdok", "oba oosterdok"):
+        waar = "Centrale OBA"
+
+    if scenario == "A":
+        base_front = "https://oba.nl/nl/agenda/volledige-agenda"
+        qs = []
+        if waar:
+            qs.append("waar=" + ul.quote_plus(f"/root/OBA/{waar}"))
+        if leeftijd:
+            qs.append("leeftijd=" + ul.quote_plus(leeftijd))
+        if wanneer:
+            qs.append("Wanneer=" + wanneer)
+        if type_activiteit:
+            qs.append("type_activiteit=" + ul.quote_plus(type_activiteit))
+
+        url = base_front + ("?" + "&".join(qs) if qs else "")
+
+        base_api = "https://zoeken.oba.nl/api/v1/search/?q=table:evenementen&refine=true"
+        facets = []
+        if waar:
+            facets.append("facet=waar%28" + ul.quote_plus(f"/root/OBA/{waar}") + "%29")
+        if leeftijd:
+            facets.append("facet=leeftijd%28" + ul.quote_plus(leeftijd) + "%29")
+        if wanneer:
+            facets.append("facet=wanneer%28" + wanneer + "%29")
+        if type_activiteit:
+            facets.append("facet=type_activiteit%28" + ul.quote_plus(type_activiteit) + "%29")
+
+        api = base_api + ("&" + "&".join(facets) if facets else "")
+
+        return {
+            "URL": url,
+            "API": api,
+            "Message": "Ik heb deze activiteiten gevonden",
+            "STATUS": "KLAAR",
+        }
+
+    return {
+        "q": agenda_text or "",
+        "collection": COLLECTION_EVENTS,
+        "query_by": "embedding",
+        "vector_query": "embedding:([], alpha: 0.8)",
+        "filter_by": "",
+        "Message": "Ik zoek in de agenda",
         "STATUS": "KLAAR",
     }
 
@@ -105,5 +162,6 @@ def _build_faq_params(user_query: str) -> Dict[str, Any]:
 
 TOOL_IMPLS = {
     "build_search_params": _build_search_params,
+    "build_agenda_query": _build_agenda_query,
     "build_faq_params": _build_faq_params,
 }
