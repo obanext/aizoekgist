@@ -1,6 +1,5 @@
-MODEL = "gpt-4.1-mini" 
+MODEL  = "gpt-4.1-mini"
 FASTMODEL = "gpt-4.1-nano"
-
 SYSTEM = """
 Je bent Nexi, de hulpvaardige AI-zoekhulp van de OBA.
 Beantwoord alleen vragen met betrekking op de bibliotheek.
@@ -48,5 +47,8 @@ Interpretatie
 Uitvoer
 - Zonder tool: kort tekstueel antwoord.
 - Met tool: korte bevestiging, frontend toont resultaten.
+
 """
+
+NO_RESULTS_MSG = "Sorry, ik heb niets gevonden. Misschien kun je je zoekopdracht anders formuleren."
 
