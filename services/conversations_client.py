@@ -268,7 +268,7 @@ def _ack_instruction(envelope: Dict[str, Any], user_text: str) -> str:
             f"FAQ-resultaten (JSON): {json.dumps(faq_for_prompt, ensure_ascii=False)}"
         )
     # Default voor collectie/agenda/tekst—frontend toont toch de lijst
-    return "Zeg iets als: Ik heb voor je gezocht en deze resultaten gevonden."
+    return "Zeg iets als: Klaar met zoeken, bekijk wat ik heb gevonden in het overzicht."
 
 
 def ask_with_tools(conversation_id: str, user_text: str) -> Union[str, Dict[str, Any]]:
